@@ -46,7 +46,8 @@
       (while
 	  (setq command (sequential-char-lookup-key
 			 ;;(current-global-map)
-			 (vector 'sequential-char (intern (this-command-keys)))))
+			 (vector 'sequential-char
+				 (intern (this-command-keys)))))
 	(and next-char
 	     (progn (flet ((message (format &rest args) (identity args)))
 		      (undo)
@@ -77,10 +78,8 @@
 	       ;;(message "spl")
 	       (destructuring-bind (pre post)(split-string command "`!!'")
 		 (insert pre)
-		 (save-excursion (insert post))
-		 )
-	       )
-	       ((stringp command)
+		 (save-excursion (insert post))))
+	      ((stringp command)
 		(insert command)
 		;;(message "ins")
 		)
@@ -149,10 +148,15 @@ If COMMAND is nil, the sequential-char is removed."
 		   (setq keys (concat keys key))
 		   )commands))
       (let* ((key1 (substring keys 0 1))
+	     (command (sequential-char-lookup-key key1))
 	     );;(logand 255 (aref keys 0))))
-	(if (not (eq (sequential-char-lookup-key1 keymap key1)
-		     ;;(char-to-string key1))
-		     'sequential-char))
+	;; (cond ((eq command nil)
+	;;        (define-key keymap key1 'sequential-char))
+	;;       ((not(eq command 'sequential-char))
+	;;        (define-key keymap key1 'sequential-char))
+	;;        )
+	;;)
+	(if (not (eq command 'sequential-char))
 	    (progn
 	      ;;(message "ng")
 	      (define-key keymap key1 'sequential-char)
@@ -176,7 +180,7 @@ If COMMAND is nil, the sequential-char is removed."
     (sequential-char-define (current-global-map) keys command))
   )
 
-;; (global-set-key (kbd "=") 'sequential-char)
+(global-set-key (kbd "=") 'sequential-char)
 ;; (global-set-key (kbd "=") 'seq-ng)
 ;;(sequential-char-define-global (kbd "=") " = ")
 (sequential-char-define-global (kbd "=") "(=`!!')")
