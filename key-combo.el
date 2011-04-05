@@ -164,3 +164,7 @@ If COMMAND is nil, the sequential-char is removed."
 ;;(sequential-char-define-global (kbd "-") '(nil nil))
 ;;(global-set-key(kbd "-") 'self-insert-command)
 
+;;todo filter
+;; support lamda func
+(provide 'key-combo)
+;;; key-combo.el ends here
