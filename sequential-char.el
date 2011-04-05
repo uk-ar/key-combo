@@ -6,6 +6,11 @@
 	  nil
 	;; else
 	res)))
+
+  (defvar sequential-char-need-undo nil)
+  (defvar sequential-char-last-prefix nil)
+  ;;(setq sequential-char-need-undo nil)
+
   (defun sequential-char-lookup-key (key)
     ;; copy from key-chord-lookup-key
     "Lookup KEY in all current key maps."
@@ -19,9 +24,6 @@
 	  (if (current-local-map)
 	      (key-chord-lookup-key1 (current-local-map) key))
 	  (key-chord-lookup-key1 (current-global-map) key))))
-  (defvar sequential-char-need-undo nil)
-  (defvar sequential-char-last-prefix nil)
-  ;;(setq sequential-char-need-undo nil)
 
   (defun sequential-char()
     (interactive)
@@ -29,7 +31,10 @@
     ;;(message "%s %s %s"last-command this-command sequential-char-need-undo)
     (if (and (eq real-last-command this-command)
 	     sequential-char-need-undo
-	     (eq last-command-event sequential-char-last-prefix))
+	     (eq last-command-event sequential-char-last-prefix)
+	     (sequential-char-lookup-key
+	      (vector 'sequential-char
+		      (intern(string last-command-event last-command-event)))))
 	(progn
 	  (flet ((message (format &rest args) (identity args)))
 	    (undo)
@@ -188,6 +193,13 @@ If COMMAND is nil, the sequential-char is removed."
 (sequential-char-define-global (kbd "=>") " => ")
 (sequential-char-define-global (kbd "(") 'skeleton-pair-insert-maybe)
 (sequential-char-define-global (kbd "(=") "(=`!!')")
+
+;;(global-set-key (kbd "==") 'sequential-char) => ng
+;; (global-set-key (kbd "=") 'seq-ng)
+;;(sequential-char-define-global (kbd "=") " = ")
+;; 1つならサイクルなし
+
+;;skeleton(())後ろがかっこの場合囲む
 
 ;;ng
 ;;(sequential-char-define-global (kbd "(=") "(=")
