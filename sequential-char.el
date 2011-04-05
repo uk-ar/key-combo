@@ -104,7 +104,8 @@ If COMMAND is nil, the sequential-char is removed."
 	    (progn
 	      ;;(message "ng")
 	      (define-key keymap key1 'sequential-char)
-	      )
+	      (define-key keymap
+		(vector 'sequential-char (intern key1)) command))
 	  ;;(lookup-key )
 	  )
 	;;(message "%s" commands)
@@ -122,78 +123,44 @@ If COMMAND is nil, the sequential-char is removed."
     (sequential-char-define (current-global-map) keys command))
   )
 
-(global-set-key (kbd "=") 'sequential-char)
-;; (global-set-key (kbd "=") 'seq-ng)
+(defun sequential-char-load-default ()
+  (sequential-char-define-global (kbd "=") '(" = " " == " "="))
+  (sequential-char-define-global (kbd "=>") " => ")
+  (sequential-char-define-global (kbd "(=") "(=`!!')")
+
+  )
+;;ok
+;;(sequential-char-define-global (kbd "=") '(" = " " == " "="))
+;;(sequential-char-define-global (kbd "(=") "(=`!!')")
+;;ok
+;;(sequential-char-define-global (kbd "(") 'skeleton-pair-insert-maybe)
+;;ok
+;;(sequential-char-define-global (kbd "=>") " => ")
+;;(sequential-char-define-global (kbd "=") '(" = " " == " "="))
+;;ok
 ;;(sequential-char-define-global (kbd "=") " = ")
-(sequential-char-define-global (kbd "=") "(=`!!')")
-(sequential-char-define-global (kbd "=") '(" = " " == " "="))
-(sequential-char-define-global (kbd "=>") " => ")
-(sequential-char-define-global (kbd "(") 'skeleton-pair-insert-maybe)
-(sequential-char-define-global (kbd "(=") "(=`!!')")
-
-;;(global-set-key (kbd "==") 'sequential-char) => ng
-;; (global-set-key (kbd "=") 'seq-ng)
-;;(sequential-char-define-global (kbd "=") " = ")
-;; 1つならサイクルなし
-
-;;skeleton(())後ろがかっこの場合囲む
-
+;;ok
+;;(global-set-key (kbd "=") 'sequential-char)
+;;ok
+;;(sequential-char-define-global (kbd "=") '(" = " " == " "="))
+;;(sequential-char-define-global (kbd "=>") " => ")
 ;;ng
-;;(sequential-char-define-global (kbd "(=") "(=")
-;;char-define (vector 'sequential-char (intern keys)) 'self-insert-command)
-
-(sequential-char-define-global (kbd "_") '(" _ " " __ " ))
-(sequential-char-define-global (kbd ">") '(" > " " >> " ))
-(sequential-char-define-global (kbd "-") '(" - " " -- " ))
-(sequential-char-define-global (kbd "->") " -> ")
-
-;;(sequential-char-define-global (kbd "=") '(" a " " aa "))
-(sequential-char-define-global (kbd "=") '(nil nil nil))
-(sequential-char-define-global (kbd "-") '(nil nil))
-(global-set-key(kbd "-") 'self-insert-command)
-
+;;(global-set-key (kbd "==") 'sequential-char) => ng
+;;ok
+;;(sequential-char-define-global (kbd "=>") " => ")
+;;(sequential-char-define-global (kbd "=") '(" = " " == " "="))
+;;(sequential-char-define-global (kbd ">") '(" > " " >> " ))
+;;(sequential-char-define-global (kbd "->") " -> ")
+;;ok
+;;(sequential-char-define-global (kbd "=") " = ")
 ;;(sequential-char-define-global (kbd "==") " == ")
 ;;(sequential-char-define-global (kbd "===") "=")
 
 
-;; (define-key (current-global-map) (vector 'sequential-char (intern "=")) " = ")
-;; (define-key (current-global-map) (vector 'sequential-char (intern "==")) " == ")
-;; (define-key (current-global-map) (vector 'sequential-char (intern "=>")) " => ")
+;;skeleton(())後ろがかっこの場合囲む
 
-;; (define-key (current-global-map) (vector 'sequential-char (intern "bb")) 'hoge)
-;; (lookup-key (current-global-map) (vector 'sequential-char (intern "==")))
+;;clean up 
+;;(sequential-char-define-global (kbd "=") '(nil nil nil))
+;;(sequential-char-define-global (kbd "-") '(nil nil))
+;;(global-set-key(kbd "-") 'self-insert-command)
 
-;; (global-set-key (kbd "=") '(lambda()
-;; 			     (buffer-disable-undo)
-;; 			     (buffer-enable-undo)
-;; 			     (interactive)
-;; 			     ;;(undo-boundary)
-;; 			     ;;(save-excursion
-;; 			     (undo-boundary)
-;; 			     (insert "abc")
-;; 			     (undo-boundary)
-;; 			     ;;(delete-backward-char 3)
-;; 			     (primitive-undo 2 buffer-undo-list)
-;; 			     ;;(undo)
-;; 			     ))
-;; buffer-undo-list
-
-;; ok
-;; (nil (#("abc" 0 3 (fontified nil)) . -5835) nil (5835 . 5838) (t 19860 . 19510))
-;; Undo!
-;; (nil (5835 . 5838) (t 19860 . 19516) nil (#("abc" 0 3 (fontified nil)) . -5835) nil (5835 . 5838) (t 19860 . 19510))
-((string-match smartchr-template-cursor-re template)
- (destructuring-bind (pre post) (split-string template smartchr-template-cursor-re)
-   (lexical-let ((pre pre) (post post))
-     (smartchr-make-struct
-      :cleanup-fn (lambda ()
-		    (delete-backward-char (length pre))
-		    (delete-backward-char (- (length post))))
-      :insert-fn (lambda ()
-		   (insert pre)
-		   (save-excursion (insert post)))))))
-(t
- (lexical-let ((template template))
-   (smartchr-make-struct
-    :cleanup-fn (lambda () (delete-backward-char (length template)))
-    :insert-fn (lambda () (insert template)))))))
