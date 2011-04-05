@@ -37,30 +37,23 @@
 		      (intern(string last-command-event last-command-event)))))
 	(progn
 	  (flet ((message (format &rest args) (identity args)))
-	    (undo)
-	    )
-	  (message "1 undo")
+	    (undo))
+	  ;;(message "1 undo")
 	  (setq sequential-char-need-undo nil)
 	  (undo-boundary)
-	  )
-      )
+	  ))
     (let ((next-char nil)
 	  command
-	  (same-key t)
-	  )
+	  (same-key t))
       (while
 	  (setq command (sequential-char-lookup-key
 			 ;;(current-global-map)
 			 (vector 'sequential-char
 				 (intern (this-command-keys)))))
 	(and next-char
-	     (progn (flet ((message (format &rest args) (identity args)))
-		      (undo)
-		      )
-		    ;;(message "2 undo")
-		    )
-	     (undo-boundary)
-	     )
+	     (flet ((message (format &rest args) (identity args)))
+		      (undo));;(message "2 undo")
+	      (undo-boundary))
 	;; (message "lc:%s lce:%c tck:%s lcc:%c lie:%c lef:%s"
 	;; 	      last-command last-command-event
 	;; 	      (this-command-keys)
@@ -68,64 +61,27 @@
 	;; 	      last-input-event
 	;; 	      last-event-frame
 	;; 	      )
-	(message "l2:%c" last-input-event)
+	;;(message "l2:%c" last-input-event)
 
-	;;(if (and (stringp command)(string-match "`!!'" command))
-	;;     (destructuring-bind (pre post)(split-string command "`!!'")
-	      ;;(lambda ()
-	      ;; (insert pre)
-	      ;; (save-excursion (insert post))
-		;;)
-	      ;;(insert command)
-	;;)
 	(cond ((and (stringp command)
 		    (string-match "`!!'" command))
-	       ;;(message "spl")
 	       (destructuring-bind (pre post)(split-string command "`!!'")
 		 (insert pre)
 		 (save-excursion (insert post))))
 	      ((stringp command)
-		(insert command)
-		;;(message "ins")
-		)
-	       (t (command-execute command)))
-	;; (if 
-	;;     (progn
-
-
-	;;       ;;(message "match:%s" (string-match "`!!'" command))
-	;;       (progn
-	;; 	;;(setq command "()")
-	;; 	;;(setq command "a`!!'b")
-      ;;       (destructuring-bind (pre post)(split-string command "`!!'")
-	;; 	(message "pre:%s" pre)
-	;; 	(message "post:%s" post)
-	;; 	))
-	;; 	  )
-      ;; (command-execute command))
-	  ;;)
-	;; (insert command)
-	(undo-boundary)
-	;; (message "%s"
-
+	       (insert command))
+	      (t (command-execute command)))
+	(undo-boundary)	
 	(setq sequential-char-last-prefix last-input-event
 	      same-key (and same-key(eq last-input-event last-command-event))
 	      sequential-char-need-undo same-key
 	      next-char (read-event))
-	(message "l1:%c" last-input-event)
-	;; (message "l2:%c" last-input-event)
-	;; (setq sequential-char-last-prefix last-input-event)
-	;; (insert command)
-	;; (undo-boundary)
-	;; (setq sequential-char-need-undo t)
-	;; (setq next-char (read-event))
-	;; (message "l1:%c" last-input-event)
+	;;(message "l1:%c" last-input-event)
 	)
-      ;;(message "hoge2")
       (and next-char
 	   (setq unread-command-events (cons next-char unread-command-events)))
       )
-    (message "l0:%c" last-input-event)
+    ;;(message "l0:%c" last-input-event)
     )
 
   (defun sequential-char-define (keymap keys commands)
@@ -134,33 +90,16 @@
 that corresponds to ascii codes in the range 32 to 126 can be used.
 \nCOMMAND can be an interactive function, a string, or nil.
 If COMMAND is nil, the sequential-char is removed."
-    ;; (if (/= 2 (length keys))
-
-    ;;     (error "Key-chord keys must have two elements"))
-    ;; Exotic chars in a string are >255 but define-key wants 128..255 for those
-    ;; (let ((key1 (logand 255 (aref keys 0)))
-    ;; 	(key2 (logand 255 (aref keys 1))))
-    ;;(if (eq key1 key2)
-    ;;(define-key keymap (vector 'key-chord key1 key2) command)
     ;;copy from key-chord-define
-    ;;(aref "aa" 0)
     (if (and(listp commands) (not (eq commands nil)))
 	(let ((key keys))
 	  (mapc '(lambda(command)
-		   ;;(incf i)
 		   (sequential-char-define keymap keys command)
-		   ;;(message "%s %s" keys key)
 		   (setq keys (concat keys key))
 		   )commands))
       (let* ((key1 (substring keys 0 1))
 	     (command (sequential-char-lookup-key key1))
-	     );;(logand 255 (aref keys 0))))
-	;; (cond ((eq command nil)
-	;;        (define-key keymap key1 'sequential-char))
-	;;       ((not(eq command 'sequential-char))
-	;;        (define-key keymap key1 'sequential-char))
-	;;        )
-	;;)
+	     )
 	(if (not (eq command 'sequential-char))
 	    (progn
 	      ;;(message "ng")
@@ -171,10 +110,8 @@ If COMMAND is nil, the sequential-char is removed."
 	;;(message "%s" commands)
 	(define-key keymap (vector 'sequential-char (intern keys)) commands)
 	))
-    ;; else
-    ;;  (define-key keymap (vector 'key-chord key1 key2) command)
-    ;;      (define-key keymap (vector 'key-chord key2 key1) command)))
     )
+  
   (defun sequential-char-define-global (keys command)
     "Define a sequential-char of two keys in KEYS starting a COMMAND.
 \nKEYS can be a string or a vector of two elements. Currently only elements
