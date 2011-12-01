@@ -60,10 +60,6 @@
         ;; else
         res)))
 
-  (defvar key-combo-need-undo nil)
-  (defvar key-combo-last-prefix nil)
-  ;;(setq key-combo-need-undo nil)
-
   (defun key-combo-describe ()
     "List key combo bindings in a help buffer."
     (interactive)
@@ -72,7 +68,6 @@
   (defun key-combo-lookup-key (key)
     ;; copy from key-chord-lookup-key
     "Lookup KEY in all current key maps."
-		(message "keys:%s" key)
     (let ((maps (current-minor-mode-maps))
      res)
       (while (and maps (not res))
@@ -83,66 +78,67 @@
               (key-combo-lookup-key1 (current-local-map) key))
           (key-combo-lookup-key1 (current-global-map) key))))
 
+  (defun key-combo-undo()
+    (flet ((message (format &rest args) (identity args)))
+      (undo))              ;execute undo whithout message.
+      (undo-boundary))
+
   ;;bug (C-/
   (defun key-combo()
     (interactive)
-    (message "in")
-    ;;(message "%s %s %s"last-command this-command key-combo-need-undo)
-    (if (and (eq real-last-command this-command)
-						 key-combo-need-undo
-						 (eq last-command-event key-combo-last-prefix)
-						 (key-combo-lookup-key
-							(vector 'key-combo
-											(intern(string last-command-event last-command-event)))))
-				(progn
-					(flet ((message (format &rest args) (identity args)))
-						(undo))														;this is for undo message.
-					;;(message "1 undo")
-					(setq key-combo-need-undo nil)
-					(undo-boundary)
-					))
+    ;;(message "in")
     (let ((next-char nil)
-					command
-					(same-key t))
-      (while
-					(and (stringp(this-command-keys))
-							 (setq command (key-combo-lookup-key
-															;;(current-global-map)
-															(vector 'key-combo
-																			(intern (this-command-keys))))))
-				(and next-char
-						 (flet ((message (format &rest args) (identity args)))
-							 (undo));;(message "2 undo")
-						 (undo-boundary))
-	;; (message "lc:%s lce:%c tck:%s lcc:%c lie:%c lef:%s"
-	;; 	      last-command last-command-event
-	;; 	      (this-command-keys)
-	;; 	      last-command-char
-	;; 	      last-input-event
-	;; 	      last-event-frame
-	;; 	      )
-	;;(message "l2:%c" last-input-event)
+          command
+          (same-key t))
+      (while (setq command
+                   (if (stringp(this-command-keys))
+                       (or (key-combo-lookup-key
+                            (vector 'key-combo
+                                    (intern (this-command-keys))))
+                           (prog1       ;for loop  = == === =
+                               (key-combo-lookup-key
+                                (vector 'key-combo
+                                        (intern (char-to-string next-char))))
+                             (clear-this-command-keys)
+                             (setq unread-command-events
+                                   (cons next-char unread-command-events)))
+                           )))
+        ;; (message "*start loop")
+        (if next-char
+            (progn
+              ;;(message "normal undo")
+              (key-combo-undo)))
+        (cond ((and command (stringp command))
+               (if (string-match "`!!'" command)
+                   (progn
+                     (destructuring-bind (pre post)
+                         (split-string command "`!!'")
+                       (insert pre)
+                       (save-excursion (insert post))))
+                 (insert command)))
+              (t (command-execute command)))
+        (undo-boundary);;for undo
+        (setq same-key (and same-key (eq last-input-event last-command-event))
+              next-char (read-event))
+        ;;(setq debug-on-error t)
+        ;; (message "this-keys3:%s" (this-command-keys))
+        ;; (message "keys3:%s" command)
 
-				(cond ((and (stringp command)
-										(string-match "`!!'" command))
-							 (destructuring-bind (pre post)(split-string command "`!!'")
-								 (insert pre)
-								 (save-excursion (insert post))))
-							((stringp command)
-							 (insert command))
-							(t (command-execute command)))
-				(undo-boundary)
-				(setq key-combo-last-prefix last-input-event
-							same-key (and same-key(eq last-input-event last-command-event))
-							key-combo-need-undo same-key
-							next-char (read-event))
-				;;(message "l1:%c" last-input-event)
-				)
-      (and next-char
-					 (setq unread-command-events (cons next-char unread-command-events)))
-      )
-    ;;(message "l0:%c" last-input-event)
-    )
+        ;; (message "n3:%s" ;;(key-combo-lookup-key
+        ;;          (if next-char
+        ;;              (vector 'key-combo
+        ;;                      ( intern(char-to-string next-char))
+        ;;                      )))
+        ;; (message "lc:%s lce:%c tck:%s lcc:%c lie:%c lef:%s"
+        ;;          last-command last-command-event
+        ;;          (this-command-keys)
+        ;;          last-command-char
+        ;;          last-input-event
+        ;;          last-event-frame
+        ;;          );;(message "l2:%c" last-input-event)
+        );;end while
+      );;end let
+    );;end key-combo
 
   (defun key-combo-define (keymap keys commands)
     "Define in KEYMAP, a key-combo of two keys in KEYS starting a COMMAND.
