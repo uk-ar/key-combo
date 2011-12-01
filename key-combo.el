@@ -39,7 +39,7 @@
 ;;
 ;; Add to your ~/.emacs
 ;;
-;;	(require 'key-combo)
+;; (require 'key-combo)
 ;;
 ;; and some chords, for example
 ;;
@@ -52,30 +52,37 @@
 ;; Code goes here
 (progn
   (defun key-combo-lookup-key1 (keymap key)
+    ;; copy from key-chord-lookup-key
     "Like lookup-key but no third arg and no numeric return value."
     (let ((res (lookup-key keymap key)))
       (if (numberp res)
-	  nil
-	;; else
-	res)))
+          nil
+        ;; else
+        res)))
 
   (defvar key-combo-need-undo nil)
   (defvar key-combo-last-prefix nil)
   ;;(setq key-combo-need-undo nil)
+
+  (defun key-combo-describe ()
+    "List key combo bindings in a help buffer."
+    (interactive)
+    (describe-bindings [key-combo]))
 
   (defun key-combo-lookup-key (key)
     ;; copy from key-chord-lookup-key
     "Lookup KEY in all current key maps."
 		(message "keys:%s" key)
     (let ((maps (current-minor-mode-maps))
-					res)
+     res)
       (while (and maps (not res))
-	(setq res (key-combo-lookup-key1 (car maps) key)
-	      maps (cdr maps)))
+        (setq res (key-combo-lookup-key1 (car maps) key)
+              maps (cdr maps)))
       (or res
-	  (if (current-local-map)
-	      (key-combo-lookup-key1 (current-local-map) key))
-	  (key-combo-lookup-key1 (current-global-map) key))))
+          (if (current-local-map)
+              (key-combo-lookup-key1 (current-local-map) key))
+          (key-combo-lookup-key1 (current-global-map) key))))
+
   ;;bug (C-/
   (defun key-combo()
     (interactive)
@@ -145,25 +152,24 @@ that corresponds to ascii codes in the range 32 to 126 can be used.
 If COMMAND is nil, the key-combo is removed."
     ;;copy from key-chord-define
     (if (and(listp commands) (not (eq commands nil)))
-	(let ((key keys))
-	  (mapc '(lambda(command)
-		   (key-combo-define keymap keys command)
-		   (setq keys (concat keys key))
-		   )commands))
+        (let ((key keys))
+          (mapc '(lambda(command)
+                   (key-combo-define keymap keys command)
+                   (setq keys (concat keys key)))
+                commands))
       (let* ((key1 (substring keys 0 1))
-	     (command (key-combo-lookup-key key1))
-	     )
-	(if (not (eq command 'key-combo))
-	    (progn
-	      ;;(message "ng")
-	      (define-key keymap key1 'key-combo)
-	      (define-key keymap
-		(vector 'key-combo (intern key1)) command))
-	  ;;(lookup-key )
-	  )
-	;;(message "%s" commands)
-	(define-key keymap (vector 'key-combo (intern keys)) commands)
-	))
+             (command (key-combo-lookup-key key1)))
+        (if (not (eq command 'key-combo))
+     (progn
+       ;;(message "ng")
+       (define-key keymap key1 'key-combo)
+       (define-key keymap
+          (vector 'key-combo (intern key1)) command))
+   ;;(lookup-key )
+   )
+ ;;(message "%s" commands)
+ (define-key keymap (vector 'key-combo (intern keys)) commands)
+ ))
     )
 
   (defun key-combo-define-global (keys command)
@@ -188,15 +194,16 @@ If COMMAND is nil, the key-combo is removed."
 (defun key-combo-load-default ()
   (key-combo-load-default-1 (current-global-map))
   )
-
+;;
+;;(key-combo-load-default)
 (defun key-combo-load-default-local ()
   (key-combo-load-default-1 (current-local-map))
   )
 
 (defun key-combo-load-default-1 (map)
-  (key-combo-define map (kbd "=") '(" = " " == " " === " "="))
+  (key-combo-define map (kbd "=") '(" = " " == " " === " ))
   (key-combo-define map (kbd "+") '(" + " "++"))
-	(key-combo-define map (kbd "&") '(" & " "&&"))
+  (key-combo-define map (kbd "&") '(" & " "&&"))
   ;;(key-combo-define map (kbd "-") '(" - " "-"))
   (key-combo-define map (kbd "=>") " => ")
   (key-combo-define map (kbd "=~") " =~ ")
@@ -239,14 +246,34 @@ If COMMAND is nil, the key-combo is removed."
 ;;(key-combo-define-global (kbd "-") '(nil nil))
 ;;(global-set-key(kbd "-") 'self-insert-command)
 
+(defun test()
+ (if (y-or-n-p "?")
+     (split-window-horizontally 20)
+   (split-window-vertically 10))
+ 1)
 (dont-compile
-	(when(fboundp 'expectations)
-		(expectations
-		 (desc "upcase")
-		 (expect "FOO" (upcase "foo"))
-		 (expect "BAR" (upcase "bAr"))
-		 (expect "BAZ" (upcase "BAZ"))
-		 )))
+  (when(fboundp 'expectations)
+    (expectations
+     (desc "upcase")
+     (expect "FOO" (upcase "foo"))
+     (expect "BAR" (upcase "bAr"))
+     (expect "BAZ" (upcase "BAZ"))
+     (desc "vertically")
+     (expect (mock (split-window-vertically 10))
+             (stub y-or-n-p  => nil)
+             (test))
+     (desc "horizontally")
+     (expect (mock (split-window-horizontally *))
+             (stub y-or-n-p  => t)
+             (test))
+     (desc "return")
+     (expect 1
+             (stub y-or-n-p)
+             (stub split-window-horizontally)
+             (stub split-window-vertically)
+             (test))
+
+     )))
 
 ;;todo filter
 ;; filter for mode
