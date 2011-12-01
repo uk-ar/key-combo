@@ -51,6 +51,13 @@
 
 ;; Code goes here
 (progn
+
+  (defvar key-combo-loop-option 'only-samekey;'allways 'only-samekey 'never
+    "Loop mode setting.
+\n'allways:do loop both same key sequence and not same key sequence.
+\n'only-samekey:do loop only same key sequence.
+\n'never:don't loop.")
+
   (defun key-combo-lookup-key1 (keymap key)
     ;; copy from key-chord-lookup-key
     "Like lookup-key but no third arg and no numeric return value."
@@ -90,19 +97,24 @@
     (let ((next-char nil)
           command
           (same-key t))
-      (while (setq command
-                   (if (stringp(this-command-keys))
-                       (or (key-combo-lookup-key
-                            (vector 'key-combo
-                                    (intern (this-command-keys))))
-                           (prog1       ;for loop  = == === =
-                               (key-combo-lookup-key
-                                (vector 'key-combo
-                                        (intern (char-to-string next-char))))
-                             (clear-this-command-keys)
-                             (setq unread-command-events
-                                   (cons next-char unread-command-events)))
-                           )))
+      (while
+          (setq command
+                (if (stringp(this-command-keys))
+                    (or (key-combo-lookup-key
+                         (vector 'key-combo
+                                 (intern (this-command-keys))))
+                        (if same-key
+                            (prog1       ;for loop  = == === =
+                                (key-combo-lookup-key
+                                 (vector 'key-combo
+                                         (intern (char-to-string next-char))))
+                              (clear-this-command-keys)
+                              (setq unread-command-events
+                                    (cons next-char unread-command-events)))
+                          (progn
+                            (setq unread-command-events
+                                  (cons next-char unread-command-events))
+                            nil)))))
         ;; (message "*start loop")
         (if next-char
             (progn
@@ -118,7 +130,11 @@
                  (insert command)))
               (t (command-execute command)))
         (undo-boundary);;for undo
-        (setq same-key (and same-key (eq last-input-event last-command-event))
+        (setq same-key
+              (cond ((eq key-combo-loop-option 'allways) t)
+                    ((eq key-combo-loop-option 'only-samekey)
+                     (and same-key (eq last-input-event last-command-event)))
+                    ((eq key-combo-loop-option 'never) nil))
               next-char (read-event))
         ;;(setq debug-on-error t)
         ;; (message "this-keys3:%s" (this-command-keys))
