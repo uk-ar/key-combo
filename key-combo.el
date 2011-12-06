@@ -85,21 +85,35 @@
               (key-combo-lookup-key1 (current-local-map) key))
           (key-combo-lookup-key1 (current-global-map) key))))
 
-  (defun key-combo-undo()
-    (flet ((message (format &rest args) (identity args)))
-      (undo))              ;execute undo whithout message.
-      (undo-boundary))
+  (defun key-combo-undo(command)
+    (cond ((and command (stringp command))
+           (if (string-match "`!!'" command)
+               (progn
+                 (destructuring-bind (pre post)
+                     (split-string command "`!!'")
+                   (delete-backward-char (length pre))
+                   (delete-backward-char (- (length post)))
+                   ))
+             (delete-backward-char (length command))))
+          (t (flet ((message (format &rest args) (identity args)))
+               (undo))              ;execute undo whithout message.
+             (undo-boundary))));;
 
   ;;bug (C-/
   (defun key-combo()
     (interactive)
     ;;(message "in")
+    (insert (this-command-keys))
+    (undo-boundary)
+    (delete-backward-char (length (this-command-keys)))
+    ;;for undo
     (let ((next-char nil)
-          command
+          (command nil)
+          (old-command nil)
           (same-key t))
       (while
           (setq command
-                (if (stringp(this-command-keys))
+                (if (stringp (this-command-keys))
                     (or (key-combo-lookup-key
                          (vector 'key-combo
                                  (intern (this-command-keys))))
@@ -110,7 +124,9 @@
                                          (intern (char-to-string next-char))))
                               (clear-this-command-keys)
                               (setq unread-command-events
-                                    (cons next-char unread-command-events)))
+                                    (cons next-char unread-command-events)
+                                    next-char (read-event) ;clear for next loop
+                                    ));;
                           (progn
                             (setq unread-command-events
                                   (cons next-char unread-command-events))
@@ -119,7 +135,7 @@
         (if next-char
             (progn
               ;;(message "normal undo")
-              (key-combo-undo)))
+              (key-combo-undo old-command)))
         (cond ((and command (stringp command))
                (if (string-match "`!!'" command)
                    (progn
@@ -135,7 +151,9 @@
                     ((eq key-combo-loop-option 'only-samekey)
                      (and same-key (eq last-input-event last-command-event)))
                     ((eq key-combo-loop-option 'never) nil))
-              next-char (read-event))
+              next-char (read-event)
+              old-command command
+              )
         ;;(setq debug-on-error t)
         ;; (message "this-keys3:%s" (this-command-keys))
         ;; (message "keys3:%s" command)
@@ -153,6 +171,8 @@
         ;;          last-event-frame
         ;;          );;(message "l2:%c" last-input-event)
         );;end while
+      (setq unread-command-events
+            (cons next-char unread-command-events))
       );;end let
     );;end key-combo
 
