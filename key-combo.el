@@ -26,7 +26,7 @@
 ;; Author: Yuuki Arisawa <yuuki.ari@gmail.com>
 ;; URL:https://github.com/uk-ar/key-combo
 ;; Created: 30 November 2011
-;; Version: 0.1
+;; Version: 0.2
 ;; Keywords: keyboard input
 
 ;;; Commentary:
@@ -234,15 +234,17 @@ If COMMAND is nil, the key-combo is removed."
 
 (defun key-combo-load-default-1 (map)
   (key-combo-define map (kbd "=") '(" = " " == " " === " ))
-  (key-combo-define map (kbd "+") '(" + " "++"))
-  (key-combo-define map (kbd "&") '(" & " "&&"))
+  ;; (key-combo-define map (kbd "+") '(" + " "++"))
+  ;; (key-combo-define map (kbd "&") '(" & " "&&"))
   ;;(key-combo-define map (kbd "-") '(" - " "-"))
   (key-combo-define map (kbd "=>") " => ")
-  (key-combo-define map (kbd "=~") " =~ ")
+  (key-combo-define map (kbd ">") '(">"))
+  (key-combo-define map (kbd ">=") " >= ")
+  ;; (key-combo-define map (kbd "=~") " =~ ")
   ;; (key-combo-define map (kbd "(=") "(=`!!')")
   ;; (key-combo-define map (kbd "<<") " << ")
   )
-
+;;(key-combo-load-default)
 ;;ok
 ;;(key-combo-define-global (kbd "=") '(" = " " == " "="))
 ;;(key-combo-define-global (kbd "(=") "(=`!!')")
