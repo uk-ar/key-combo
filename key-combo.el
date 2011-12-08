@@ -239,8 +239,8 @@ If COMMAND is nil, the key-combo is removed."
   ;;(key-combo-define map (kbd "-") '(" - " "-"))
   (key-combo-define map (kbd "=>") " => ")
   (key-combo-define map (kbd "=~") " =~ ")
-  (key-combo-define map (kbd "(=") "(=`!!')")
-  (key-combo-define map (kbd "<<") " << ")
+  ;; (key-combo-define map (kbd "(=") "(=`!!')")
+  ;; (key-combo-define map (kbd "<<") " << ")
   )
 
 ;;ok
