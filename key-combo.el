@@ -50,6 +50,7 @@
 ;; (key-combo-load-default)
 
 ;; Code goes here
+(require 'cl)
 (progn
 
   (defvar key-combo-loop-option 'only-samekey;'allways 'only-samekey 'never
@@ -99,39 +100,46 @@
                (undo))              ;execute undo whithout message.
              (undo-boundary))));;
 
+  (defun key-combo-get-command(same-key all-command-keys)
+    (let ((new-command-keys nil))
+      (setq command
+            (or
+             (progn
+               (setq new-command-keys all-command-keys)
+               (key-combo-lookup-key
+                (vector 'key-combo
+                        (intern all-command-keys))))
+             (if (and same-key (characterp last-input-event))
+                 (progn       ;for loop  = == === =
+                   (setq new-command-keys (char-to-string last-input-event))
+                   (key-combo-lookup-key
+                    (vector 'key-combo
+                            (intern (char-to-string last-input-event)))))
+               nil
+               )))
+      (list command new-command-keys)
+      ))
+
   ;;bug (C-/
   (defun key-combo()
     (interactive)
     ;;(message "in")
-    (insert (this-command-keys))
-    (undo-boundary)
-    (delete-backward-char (length (this-command-keys)))
+    (let ((first-char (this-command-keys)))
+      (insert first-char)
+      (undo-boundary)
+      (delete-backward-char (length first-char))
+      )
     ;;for undo
-    (let ((next-char nil)
-          (command nil)
-          (old-command nil)
-          (same-key t))
-      (while
-          (setq command
-                (if (stringp (this-command-keys))
-                    (or (key-combo-lookup-key
-                         (vector 'key-combo
-                                 (intern (this-command-keys))))
-                        (if same-key
-                            (prog1       ;for loop  = == === =
-                                (key-combo-lookup-key
-                                 (vector 'key-combo
-                                         (intern (char-to-string next-char))))
-                              (clear-this-command-keys)
-                              (setq unread-command-events
-                                    (cons next-char unread-command-events)
-                                    next-char (read-event) ;clear for next loop
-                                    ));;
-                          (progn
-                            (setq unread-command-events
-                                  (cons next-char unread-command-events))
-                            nil)))))
-        ;; (message "*start loop")
+    (let* ((next-char nil)
+           (same-key t)
+           (first-char last-input-event)
+           (all-command-keys (format "%c" first-char))
+           (command (car (key-combo-get-command same-key all-command-keys)))
+           (old-command nil)
+          )
+      (while command
+        (message "*start loop")
+        (message "*%s" all-command-keys)
         (if next-char
             (progn
               ;;(message "normal undo")
@@ -149,11 +157,20 @@
         (setq same-key
               (cond ((eq key-combo-loop-option 'allways) t)
                     ((eq key-combo-loop-option 'only-samekey)
-                     (and same-key (eq last-input-event last-command-event)))
+                     (and same-key (eq last-input-event first-char)))
                     ((eq key-combo-loop-option 'never) nil))
               next-char (read-event)
               old-command command
+              all-command-keys (if (characterp next-char)
+                                   (format "%c%s" next-char all-command-keys)
+                                 "")
               )
+        (destructuring-bind (comm all)
+            (key-combo-get-command same-key all-command-keys)
+          (setq command comm
+                all-command-keys all)
+            )
+        ;;(message "s:%s n:%c o:%s" same-key next-char old-command)
         ;;(setq debug-on-error t)
         ;; (message "this-keys3:%s" (this-command-keys))
         ;; (message "keys3:%s" command)
@@ -200,8 +217,8 @@ If COMMAND is nil, the key-combo is removed."
    ;;(lookup-key )
    )
  ;;(message "%s" commands)
- (define-key keymap (vector 'key-combo (intern keys)) commands)
- ))
+        (define-key keymap (vector 'key-combo (intern keys)) commands)
+        ))
     )
 
   (defun key-combo-define-global (keys command)
@@ -306,8 +323,24 @@ If COMMAND is nil, the key-combo is removed."
              (stub split-window-horizontally)
              (stub split-window-vertically)
              (test))
-
      )))
+
+(key-combo-lookup-key (vector 'key-combo (intern "="))) ; => " = "
+(key-combo-lookup-key (vector 'key-combo (intern "=="))) ; => " == "
+(key-combo-lookup-key (vector 'key-combo (intern "===")))  ; => " === "
+(key-combo-lookup-key (vector 'key-combo (intern "===="))) ; => nil
+(key-combo-lookup-key (vector 'key-combo (intern "====="))) ; => nil
+
+(key-combo-get-command t "=")         ; => (" = " "=")
+(key-combo-get-command t "==")        ; => (" == " "==")
+(let((last-input-event ?=))
+  (key-combo-get-command t "==="))    ; => (" === " "===")
+(let((last-input-event ?=))
+  (key-combo-get-command t "===="))   ; => (" = " "====")
+(let((last-input-event ?=))
+  (key-combo-get-command t "====="))  ; => (" = " "=====")
+(let((last-input-event ?*))
+  (key-combo-get-command t "===*"))   ; => (nil "===*")
 
 ;;todo filter
 ;; filter for mode
