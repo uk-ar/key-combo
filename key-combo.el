@@ -77,7 +77,7 @@
     ;; copy from key-chord-lookup-key
     "Lookup KEY in all current key maps."
     (let ((maps (current-minor-mode-maps))
-     res)
+          res)
       (while (and maps (not res))
         (setq res (key-combo-lookup-key1 (car maps) key)
               maps (cdr maps)))
@@ -85,6 +85,14 @@
           (if (current-local-map)
               (key-combo-lookup-key1 (current-local-map) key))
           (key-combo-lookup-key1 (current-global-map) key))))
+
+  (defun key-combo-lookup (events)
+    (let ((key
+           (intern
+            (if (characterp events)
+                (char-to-string events)
+              (mapconcat 'char-to-string events "")))))
+      (key-combo-lookup-key (vector 'key-combo key))))
 
   (defun key-combo-undo(command)
     (cond ((and command (stringp command))
@@ -106,19 +114,15 @@
             (or
              (progn
                (setq new-command-keys all-command-keys)
-               (key-combo-lookup-key
-                (vector 'key-combo
-                        (intern all-command-keys))))
+               (key-combo-lookup all-command-keys))
              (if (and same-key (characterp last-input-event))
                  (progn       ;for loop  = == === =
                    (setq new-command-keys (char-to-string last-input-event))
-                   (key-combo-lookup-key
-                    (vector 'key-combo
-                            (intern (char-to-string last-input-event)))))
+                   (key-combo-lookup last-input-event)
+                   )
                nil
                )))
-      (list command new-command-keys)
-      ))
+      (list command new-command-keys)))
 
   ;;bug (C-/
   (defun key-combo()
@@ -213,7 +217,7 @@ If COMMAND is nil, the key-combo is removed."
        ;;(message "ng")
        (define-key keymap key1 'key-combo)
        (define-key keymap
-          (vector 'key-combo (intern key1)) command))
+         (vector 'key-combo (intern key1)) command))
    ;;(lookup-key )
    )
  ;;(message "%s" commands)
@@ -330,6 +334,12 @@ If COMMAND is nil, the key-combo is removed."
 (key-combo-lookup-key (vector 'key-combo (intern "===")))  ; => " === "
 (key-combo-lookup-key (vector 'key-combo (intern "===="))) ; => nil
 (key-combo-lookup-key (vector 'key-combo (intern "====="))) ; => nil
+
+(key-combo-lookup [?=])                 ; => " = "
+(key-combo-lookup [?= ?=])              ; => " == "
+(key-combo-lookup '(?= ?=))             ; => " == "
+(key-combo-lookup [?= ?= ?= ?=])        ; => nil
+(key-combo-lookup ?= )                ; => " = "
 
 (key-combo-get-command t "=")         ; => (" = " "=")
 (key-combo-get-command t "==")        ; => (" == " "==")
