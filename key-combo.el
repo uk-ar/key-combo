@@ -128,22 +128,23 @@
   (defun key-combo()
     (interactive)
     ;;(message "in")
-    (let ((first-char (this-command-keys)))
-      (insert first-char)
+    ;;(let ((first-char (this-command-keys)))
+      (insert last-input-event)
       (undo-boundary)
-      (delete-backward-char (length first-char))
-      )
+      (delete-backward-char 1)
+      ;;)
     ;;for undo
     (let* ((next-char nil)
            (same-key t)
-           (first-char last-input-event)
-           (all-command-keys (format "%c" first-char))
+           (first-char last-input-event) ;because all-command-keys may clear
+           (all-command-keys (list first-char))
            (command (car (key-combo-get-command same-key all-command-keys)))
            (old-command nil)
           )
       (while command
         (message "*start loop")
         (message "*%s" all-command-keys)
+        (message "c %s" command)
         (if next-char
             (progn
               ;;(message "normal undo")
@@ -166,36 +167,36 @@
               next-char (read-event)
               old-command command
               all-command-keys (if (characterp next-char)
-                                   (format "%s%c" all-command-keys next-char)
-                                 "")
+                                   (append all-command-keys (list next-char))
+                                 nil)
               )
         (destructuring-bind (comm all)
             (key-combo-get-command same-key all-command-keys)
           (setq command comm
                 all-command-keys all)
             )
-        ;;(message "s:%s n:%c o:%s" same-key next-char old-command)
-        ;;(setq debug-on-error t)
-        ;; (message "this-keys3:%s" (this-command-keys))
-        ;; (message "keys3:%s" command)
-
-        ;; (message "n3:%s" ;;(key-combo-lookup-key
-        ;;          (if next-char
-        ;;              (vector 'key-combo
-        ;;                      ( intern(char-to-string next-char))
-        ;;                      )))
-        ;; (message "lc:%s lce:%c tck:%s lcc:%c lie:%c lef:%s"
-        ;;          last-command last-command-event
-        ;;          (this-command-keys)
-        ;;          last-command-char
-        ;;          last-input-event
-        ;;          last-event-frame
-        ;;          );;(message "l2:%c" last-input-event)
         );;end while
       (setq unread-command-events
             (cons next-char unread-command-events))
       );;end let
     );;end key-combo
+  ;;(message "s:%s n:%c o:%s" same-key next-char old-command)
+  ;;(setq debug-on-error t)
+  ;; (message "this-keys3:%s" (this-command-keys))
+  ;; (message "keys3:%s" command)
+
+  ;; (message "n3:%s" ;;(key-combo-lookup-key
+  ;;          (if next-char
+  ;;              (vector 'key-combo
+  ;;                      ( intern(char-to-string next-char))
+  ;;                      )))
+  ;; (message "lc:%s lce:%c tck:%s lcc:%c lie:%c lef:%s"
+  ;;          last-command last-command-event
+  ;;          (this-command-keys)
+  ;;          last-command-char
+  ;;          last-input-event
+  ;;          last-event-frame
+  ;;          );;(message "l2:%c" last-input-event)
 
   (defun key-combo-define (keymap keys commands)
     "Define in KEYMAP, a key-combo of two keys in KEYS starting a COMMAND.
@@ -340,15 +341,22 @@ If COMMAND is nil, the key-combo is removed."
 (key-combo-lookup [?= ?=])              ; => " == "
 (key-combo-lookup [?= ?>])              ; => " => "
 (key-combo-lookup '(?= ?=))             ; => " == "
+(key-combo-lookup '(?= ?= ?=))             ; => " == "
 (key-combo-lookup [?= ?= ?= ?=])        ; => nil
 (key-combo-lookup ?= )                ; => " = "
 
 (key-combo-get-command t "=")         ; => (" = " "=")
+(key-combo-get-command t [?=])        ; => (" = " [61])
 (key-combo-get-command t "==")        ; => (" == " "==")
+(key-combo-get-command t [?= ?=])     ; => (" == " [61 61])
 (let((last-input-event ?=))
   (key-combo-get-command t "==="))    ; => (" === " "===")
 (let((last-input-event ?=))
+  (key-combo-get-command t [?= ?= ?=])) ; => (" === " [61 61 61])
+(let((last-input-event ?=))
   (key-combo-get-command t "===="))   ; => (" = " "====")
+(let((last-input-event ?=))
+  (key-combo-get-command t [?= ?= ?= ?=])) ; => (" = " "=")
 (let((last-input-event ?=))
   (key-combo-get-command t "====="))  ; => (" = " "=====")
 (let((last-input-event ?*))
