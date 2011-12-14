@@ -310,58 +310,114 @@ If COMMAND is nil, the key-combo is removed."
 (dont-compile
   (when(fboundp 'expectations)
     (expectations
-     (desc "upcase")
-     (expect "FOO" (upcase "foo"))
-     (expect "BAR" (upcase "bAr"))
-     (expect "BAZ" (upcase "BAZ"))
-     (desc "vertically")
-     (expect (mock (split-window-vertically 10))
-             (stub y-or-n-p  => nil)
-             (test))
-     (desc "horizontally")
-     (expect (mock (split-window-horizontally *))
-             (stub y-or-n-p  => t)
-             (test))
-     (desc "return")
-     (expect 1
-             (stub y-or-n-p)
-             (stub split-window-horizontally)
-             (stub split-window-vertically)
-             (test))
-     )))
+      (desc "key-combo")
+      (expect " = "
+        (with-temp-buffer
+          (setq unread-command-events (listify-key-sequence "=\C-a"))
+          (read-key)
+          (call-interactively 'key-combo)
+          (buffer-string)
+          ))
+      (expect " == "
+        (with-temp-buffer
+          (setq unread-command-events (listify-key-sequence "==\C-a"))
+          (read-event)
+          (call-interactively 'key-combo)
+          (buffer-string)
+          ))
+      (expect " => "
+        (with-temp-buffer
+          (setq unread-command-events (listify-key-sequence "=>\C-a"))
+          (read-event)
+          (call-interactively 'key-combo)
+          (buffer-string)
+          ))
+      (expect " === "
+        (with-temp-buffer
+          (setq unread-command-events (listify-key-sequence "===\C-a"))
+          (read-event)
+          (call-interactively 'key-combo)
+          (buffer-string)
+          ))
+      (desc "undo")
+      (expect "="
+        (with-temp-buffer
+          (setq unread-command-events (listify-key-sequence "=\C-a"))
+          (read-event)
+          (buffer-enable-undo)
+          (call-interactively 'key-combo)
+          (undo)
+          (buffer-string)
+          ))
+      (desc "loop")
+      (expect " = "
+        (with-temp-buffer
+          (setq unread-command-events (listify-key-sequence "====\C-a"))
+          (read-event)
+          (call-interactively 'key-combo)
+          (buffer-string)
+          ))
+      (desc "key-combo-lookup-key")
+      (expect " = "
+        (key-combo-lookup-key (vector 'key-combo (intern "="))))
+      (expect " == "
+        (key-combo-lookup-key (vector 'key-combo (intern "=="))))
+      (expect " => "
+        (key-combo-lookup-key (vector 'key-combo (intern "=>"))))
+      (expect " === "
+        (key-combo-lookup-key (vector 'key-combo (intern "==="))))
+      (expect nil
+        (key-combo-lookup-key (vector 'key-combo (intern "===="))))
+      (expect nil
+        (key-combo-lookup-key (vector 'key-combo (intern "====="))))
+      (desc "key-combo-lookup")
+      (expect " = "
+        (key-combo-lookup [?=]))
+      (expect " == "
+        (key-combo-lookup [?= ?=]))
+      (expect " => "
+        (key-combo-lookup [?= ?>]))
+      (expect " == "
+        (key-combo-lookup '(?= ?=)))
+      (expect " === "
+        (key-combo-lookup '(?= ?= ?=)))
+      (expect nil
+        (key-combo-lookup [?= ?= ?= ?=]))
+      (expect " = "
+        (key-combo-lookup ?= ))
 
-(key-combo-lookup-key (vector 'key-combo (intern "="))) ; => " = "
-(key-combo-lookup-key (vector 'key-combo (intern "=="))) ; => " == "
-(key-combo-lookup-key (vector 'key-combo (intern "=>"))) ; => " => "
-(key-combo-lookup-key (vector 'key-combo (intern "===")))  ; => " === "
-(key-combo-lookup-key (vector 'key-combo (intern "===="))) ; => nil
-(key-combo-lookup-key (vector 'key-combo (intern "====="))) ; => nil
+      (key-combo-get-command t "=")         ; => (" = " "=")
+      (key-combo-get-command t [?=])        ; => (" = " [61])
+      (key-combo-get-command t "==")        ; => (" == " "==")
+      (key-combo-get-command t [?= ?=])     ; => (" == " [61 61])
+      (let((last-input-event ?=))
+        (key-combo-get-command t "==="))    ; => (" === " "===")
+      (let((last-input-event ?=))
+        (key-combo-get-command t [?= ?= ?=])) ; => (" === " [61 61 61])
+      (let((last-input-event ?=))
+        (key-combo-get-command t "===="))   ; => (" = " "====")
+      (let((last-input-event ?=))
+        (key-combo-get-command t [?= ?= ?= ?=])) ; => (" = " "=")
+      (let((last-input-event ?=))
+        (key-combo-get-command t "====="))  ; => (" = " "=====")
+      (let((last-input-event ?*))
+        (key-combo-get-command t "===*"))   ; => (nil "===*")
 
-(key-combo-lookup [?=])                 ; => " = "
-(key-combo-lookup [?= ?=])              ; => " == "
-(key-combo-lookup [?= ?>])              ; => " => "
-(key-combo-lookup '(?= ?=))             ; => " == "
-(key-combo-lookup '(?= ?= ?=))             ; => " == "
-(key-combo-lookup [?= ?= ?= ?=])        ; => nil
-(key-combo-lookup ?= )                ; => " = "
-
-(key-combo-get-command t "=")         ; => (" = " "=")
-(key-combo-get-command t [?=])        ; => (" = " [61])
-(key-combo-get-command t "==")        ; => (" == " "==")
-(key-combo-get-command t [?= ?=])     ; => (" == " [61 61])
-(let((last-input-event ?=))
-  (key-combo-get-command t "==="))    ; => (" === " "===")
-(let((last-input-event ?=))
-  (key-combo-get-command t [?= ?= ?=])) ; => (" === " [61 61 61])
-(let((last-input-event ?=))
-  (key-combo-get-command t "===="))   ; => (" = " "====")
-(let((last-input-event ?=))
-  (key-combo-get-command t [?= ?= ?= ?=])) ; => (" = " "=")
-(let((last-input-event ?=))
-  (key-combo-get-command t "====="))  ; => (" = " "=====")
-(let((last-input-event ?*))
-  (key-combo-get-command t "===*"))   ; => (nil "===*")
-
+      ;; (desc "vertically")
+      ;; (expect (mock (split-window-vertically 10))
+      ;;         (stub y-or-n-p  => nil)
+      ;;         (test))
+      ;; (desc "horizontally")
+      ;; (expect (mock (split-window-horizontally *))
+      ;;         (stub y-or-n-p  => t)
+      ;;         (test))
+      ;; (desc "return")
+      ;; (expect 1
+      ;;         (stub y-or-n-p)
+      ;;         (stub split-window-horizontally)
+      ;;         (stub split-window-vertically)
+      ;;         (test))
+      )))
 ;;todo filter
 ;; filter for mode
 ;; filter for ""
