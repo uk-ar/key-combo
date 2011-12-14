@@ -166,7 +166,7 @@
               next-char (read-event)
               old-command command
               all-command-keys (if (characterp next-char)
-                                   (format "%c%s" next-char all-command-keys)
+                                   (format "%s%c" all-command-keys next-char)
                                  "")
               )
         (destructuring-bind (comm all)
@@ -331,12 +331,14 @@ If COMMAND is nil, the key-combo is removed."
 
 (key-combo-lookup-key (vector 'key-combo (intern "="))) ; => " = "
 (key-combo-lookup-key (vector 'key-combo (intern "=="))) ; => " == "
+(key-combo-lookup-key (vector 'key-combo (intern "=>"))) ; => " => "
 (key-combo-lookup-key (vector 'key-combo (intern "===")))  ; => " === "
 (key-combo-lookup-key (vector 'key-combo (intern "===="))) ; => nil
 (key-combo-lookup-key (vector 'key-combo (intern "====="))) ; => nil
 
 (key-combo-lookup [?=])                 ; => " = "
 (key-combo-lookup [?= ?=])              ; => " == "
+(key-combo-lookup [?= ?>])              ; => " => "
 (key-combo-lookup '(?= ?=))             ; => " == "
 (key-combo-lookup [?= ?= ?= ?=])        ; => nil
 (key-combo-lookup ?= )                ; => " = "
