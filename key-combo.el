@@ -53,10 +53,10 @@
 (require 'cl)
 (progn
 
-  (defvar key-combo-loop-option 'only-samekey;'allways 'only-samekey 'never
+  (defvar key-combo-loop-option 'only-same-key;'allways 'only-same-key 'never
     "Loop mode setting.
 \n'allways:do loop both same key sequence and not same key sequence.
-\n'only-samekey:do loop only same key sequence.
+\n'only-same-key:do loop only same key sequence.
 \n'never:don't loop.")
 
   (defun key-combo-lookup-key1 (keymap key)
@@ -108,48 +108,8 @@
                (undo))              ;execute undo whithout message.
              (undo-boundary))));;
 
-  (defun key-combo-get-command(same-key all-command-keys)
-    (let ((new-command-keys nil))
-      (setq command
-            (or
-             (progn
-               (setq new-command-keys all-command-keys)
-               (key-combo-lookup all-command-keys))
-             (if (and same-key (characterp last-input-event))
-                 (progn       ;for loop  = == === =
-                   (setq new-command-keys (char-to-string last-input-event))
-                   (key-combo-lookup last-input-event)
-                   )
-               nil
-               )))
-      (list command new-command-keys)))
-
-  ;;bug (C-/
-  (defun key-combo()
-    (interactive)
-    ;;(message "in")
-    ;;(let ((first-char (this-command-keys)))
-      (insert last-input-event)
-      (undo-boundary)
-      (delete-backward-char 1)
-      ;;)
-    ;;for undo
-    (let* ((next-char nil)
-           (same-key t)
-           (first-char last-input-event) ;because all-command-keys may clear
-           (all-command-keys (list first-char))
-           (command (car (key-combo-get-command same-key all-command-keys)))
-           (old-command nil)
-          )
-      (while command
-        (message "*start loop")
-        (message "*%s" all-command-keys)
-        (message "c %s" command)
-        (if next-char
-            (progn
-              ;;(message "normal undo")
-              (key-combo-undo old-command)))
-        (cond ((and command (stringp command))
+  (defun key-combo-command-execute(command)
+          (cond ((and command (stringp command))
                (if (string-match "`!!'" command)
                    (progn
                      (destructuring-bind (pre post)
@@ -158,45 +118,43 @@
                        (save-excursion (insert post))))
                  (insert command)))
               (t (command-execute command)))
-        (undo-boundary);;for undo
-        (setq same-key
-              (cond ((eq key-combo-loop-option 'allways) t)
-                    ((eq key-combo-loop-option 'only-samekey)
-                     (and same-key (eq last-input-event first-char)))
-                    ((eq key-combo-loop-option 'never) nil))
-              next-char (read-event)
-              old-command command
-              all-command-keys (if (characterp next-char)
-                                   (append all-command-keys (list next-char))
-                                 nil)
-              )
-        (destructuring-bind (comm all)
-            (key-combo-get-command same-key all-command-keys)
-          (setq command comm
-                all-command-keys all)
-            )
-        );;end while
+          )
+
+  ;;bug (C-/
+  (defun key-combo()
+    (interactive)
+    (insert last-input-event)
+    (undo-boundary)
+    ;;for undo
+    (let* ((same-key last-input-event) ;
+           (all-command-keys (list last-input-event))
+           (command key-combo-lookup all-command-keys)
+           (old-command (char-to-string last-input-event)))
+      (catch 'invalid-event
+        (while command
+          (key-combo-undo old-command)
+          (key-combo-command-execute command)
+          (undo-boundary);;for undo
+          (if (not characterp (read-event)) (throw 'invalid-event t))
+          (setq same-key
+                (cond ((eq key-combo-loop-option 'allways) t)
+                      ((eq key-combo-loop-option 'only-same-key)
+                       (and same-key (eq last-input-event first-char)))
+                      ((eq key-combo-loop-option 'never) nil))
+                old-command command)
+          (setq all-command-keys (append all-command-keys
+                                         (list last-input-event)))
+          (setq commmand (key-combo-lookup all-command-keys))
+          (if (and not command same-key)
+              (progn
+                (setq all-command-keys (char-to-string last-input-event))
+                (setq commmand (key-combo-lookup all-command-keys))))
+          );;end while
+        );;end catch
       (setq unread-command-events
-            (cons next-char unread-command-events))
+            (cons last-input-event unread-command-events))
       );;end let
     );;end key-combo
-  ;;(message "s:%s n:%c o:%s" same-key next-char old-command)
-  ;;(setq debug-on-error t)
-  ;; (message "this-keys3:%s" (this-command-keys))
-  ;; (message "keys3:%s" command)
-
-  ;; (message "n3:%s" ;;(key-combo-lookup-key
-  ;;          (if next-char
-  ;;              (vector 'key-combo
-  ;;                      ( intern(char-to-string next-char))
-  ;;                      )))
-  ;; (message "lc:%s lce:%c tck:%s lcc:%c lie:%c lef:%s"
-  ;;          last-command last-command-event
-  ;;          (this-command-keys)
-  ;;          last-command-char
-  ;;          last-input-event
-  ;;          last-event-frame
-  ;;          );;(message "l2:%c" last-input-event)
 
   (defun key-combo-define (keymap keys commands)
     "Define in KEYMAP, a key-combo of two keys in KEYS starting a COMMAND.
@@ -318,6 +276,14 @@ If COMMAND is nil, the key-combo is removed."
           (call-interactively 'key-combo)
           (buffer-string)
           ))
+      (expect " = *"
+        (with-temp-buffer
+          (setq unread-command-events (listify-key-sequence "=*\C-a"))
+          (read-event)
+          (call-interactively 'key-combo)
+          (insert (char-to-string(car unread-command-events)))
+          (buffer-string)
+          ))
       (expect " == "
         (with-temp-buffer
           (setq unread-command-events (listify-key-sequence "==\C-a"))
@@ -349,10 +315,28 @@ If COMMAND is nil, the key-combo is removed."
           (undo)
           (buffer-string)
           ))
+      (expect " = "
+        (with-temp-buffer
+          (setq unread-command-events (listify-key-sequence "==\C-a"))
+          (read-event)
+          (buffer-enable-undo)
+          (call-interactively 'key-combo)
+          (undo)
+          (buffer-string)
+          ))
       (desc "loop")
       (expect " = "
         (with-temp-buffer
           (setq unread-command-events (listify-key-sequence "====\C-a"))
+          (read-event)
+          (call-interactively 'key-combo)
+          (buffer-string)
+          ))
+      (expect " =>  = "
+        (with-temp-buffer
+          (setq unread-command-events (listify-key-sequence "=>=\C-a"))
+          (read-event)
+          (call-interactively 'key-combo)
           (read-event)
           (call-interactively 'key-combo)
           (buffer-string)
@@ -385,23 +369,6 @@ If COMMAND is nil, the key-combo is removed."
         (key-combo-lookup [?= ?= ?= ?=]))
       (expect " = "
         (key-combo-lookup ?= ))
-
-      (key-combo-get-command t "=")         ; => (" = " "=")
-      (key-combo-get-command t [?=])        ; => (" = " [61])
-      (key-combo-get-command t "==")        ; => (" == " "==")
-      (key-combo-get-command t [?= ?=])     ; => (" == " [61 61])
-      (let((last-input-event ?=))
-        (key-combo-get-command t "==="))    ; => (" === " "===")
-      (let((last-input-event ?=))
-        (key-combo-get-command t [?= ?= ?=])) ; => (" === " [61 61 61])
-      (let((last-input-event ?=))
-        (key-combo-get-command t "===="))   ; => (" = " "====")
-      (let((last-input-event ?=))
-        (key-combo-get-command t [?= ?= ?= ?=])) ; => (" = " "=")
-      (let((last-input-event ?=))
-        (key-combo-get-command t "====="))  ; => (" = " "=====")
-      (let((last-input-event ?*))
-        (key-combo-get-command t "===*"))   ; => (nil "===*")
 
       ;; (desc "vertically")
       ;; (expect (mock (split-window-vertically 10))
