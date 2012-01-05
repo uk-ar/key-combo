@@ -126,16 +126,17 @@
     (insert last-input-event)
     (undo-boundary)
     ;;for undo
-    (let* ((same-key last-input-event) ;
+    (let* ((first-char last-input-event)
            (all-command-keys (list last-input-event))
-           (command key-combo-lookup all-command-keys)
-           (old-command (char-to-string last-input-event)))
+           (command (key-combo-lookup all-command-keys))
+           (old-command (char-to-string last-input-event))
+           same-key)
       (catch 'invalid-event
         (while command
           (key-combo-undo old-command)
           (key-combo-command-execute command)
           (undo-boundary);;for undo
-          (if (not characterp (read-event)) (throw 'invalid-event t))
+          (if (not (characterp (read-event))) (throw 'invalid-event t))
           (setq same-key
                 (cond ((eq key-combo-loop-option 'allways) t)
                       ((eq key-combo-loop-option 'only-same-key)
@@ -144,11 +145,11 @@
                 old-command command)
           (setq all-command-keys (append all-command-keys
                                          (list last-input-event)))
-          (setq commmand (key-combo-lookup all-command-keys))
-          (if (and not command same-key)
+          (setq command (key-combo-lookup all-command-keys))
+          (if (and (not command) same-key)
               (progn
                 (setq all-command-keys (char-to-string last-input-event))
-                (setq commmand (key-combo-lookup all-command-keys))))
+                (setq command (key-combo-lookup all-command-keys))))
           );;end while
         );;end catch
       (setq unread-command-events
