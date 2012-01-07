@@ -154,8 +154,9 @@
           (setq all-command-keys (append all-command-keys
                                          (list last-input-event)))
           (setq command (key-combo-lookup all-command-keys))
-          (if (and (not command) same-key)
+          (if (and (not command) same-key);;for loop
               (progn
+                (if (eq 2 (length all-command-keys)) (throw 'invalid-event t))
                 (setq all-command-keys (char-to-string last-input-event))
                 (setq command (key-combo-lookup all-command-keys))))
           );;end while
@@ -229,6 +230,7 @@ If COMMAND is nil, the key-combo is removed."
   ;; (key-combo-define map (kbd "(=") "(=`!!')")
   ;; (key-combo-define map (kbd "<<") " << ")
   )
+
 ;;(key-combo-load-default)
 ;;ok
 ;;(key-combo-define-global (kbd "=") '(" = " " == " "="))
@@ -279,6 +281,8 @@ If COMMAND is nil, the key-combo is removed."
           (setq unread-command-events (listify-key-sequence ">>\C-a"))
           (read-event)
           (call-interactively 'key-combo)
+          (call-interactively 'key-combo)
+          ;;(insert (char-to-string(car unread-command-events)))
           (buffer-string)
           ))
       (expect " = "
