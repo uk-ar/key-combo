@@ -33,7 +33,7 @@
 
 ;; ########   Compatibility   ########################################
 ;;
-;; Works with Emacs-23.2.1
+;; Works with Emacs-23.2.1, 23.1.1
 
 ;; ########   Quick start   ########################################
 ;;
@@ -43,11 +43,20 @@
 ;;
 ;; and some chords, for example
 ;;
-;;      (key-chord-define-global "hj"     'undo)
-;;      (key-chord-define-global ",."     "<>\C-b")
-
-;; (require 'key-combo)
+;; (key-combo-define-global (kbd "=") '(" = " " == " " === " ))
+;; (key-combo-define-global (kbd "=>") " => ")
+;;
+;;
+;; or load default settings
 ;; (key-combo-load-default)
+
+;;; History:
+
+;; Revision 0.2
+;; * Bugfix by tomykaira
+
+;; Revision 0.1
+;; * First release
 
 ;; Code goes here
 (require 'cl)
@@ -126,11 +135,10 @@
     (insert last-input-event)
     (undo-boundary)
     ;;for undo
-    (let* ((first-char last-input-event)
+    (let* ((same-key last-input-event)
            (all-command-keys (list last-input-event))
            (command (key-combo-lookup all-command-keys))
-           (old-command (char-to-string last-input-event))
-           same-key)
+           (old-command (char-to-string last-input-event)))
       (catch 'invalid-event
         (while command
           (key-combo-undo old-command)
@@ -140,7 +148,7 @@
           (setq same-key
                 (cond ((eq key-combo-loop-option 'allways) t)
                       ((eq key-combo-loop-option 'only-same-key)
-                       (and same-key (eq last-input-event first-char)))
+                       (if (eq last-input-event same-key) same-key nil))
                       ((eq key-combo-loop-option 'never) nil))
                 old-command command)
           (setq all-command-keys (append all-command-keys
@@ -164,7 +172,7 @@ that corresponds to ascii codes in the range 32 to 126 can be used.
 \nCOMMAND can be an interactive function, a string, or nil.
 If COMMAND is nil, the key-combo is removed."
     ;;copy from key-chord-define
-    (if (and(listp commands) (not (eq commands nil)))
+    (if (and (listp commands) (not (eq commands nil)))
         (let ((key keys))
           (mapc '(lambda(command)
                    (key-combo-define keymap keys command)
@@ -173,14 +181,10 @@ If COMMAND is nil, the key-combo is removed."
       (let* ((key1 (substring keys 0 1))
              (command (key-combo-lookup-key key1)))
         (if (not (eq command 'key-combo))
-     (progn
-       ;;(message "ng")
-       (define-key keymap key1 'key-combo)
-       (define-key keymap
-         (vector 'key-combo (intern key1)) command))
-   ;;(lookup-key )
-   )
- ;;(message "%s" commands)
+            (progn
+              (define-key keymap key1 'key-combo)
+              (define-key keymap
+                (vector 'key-combo (intern key1)) command)))
         (define-key keymap (vector 'key-combo (intern keys)) commands)
         ))
     )
@@ -270,6 +274,13 @@ If COMMAND is nil, the key-combo is removed."
   (when(fboundp 'expectations)
     (expectations
       (desc "key-combo")
+      (expect ">>"
+        (with-temp-buffer
+          (setq unread-command-events (listify-key-sequence ">>\C-a"))
+          (read-event)
+          (call-interactively 'key-combo)
+          (buffer-string)
+          ))
       (expect " = "
         (with-temp-buffer
           (setq unread-command-events (listify-key-sequence "=\C-a"))
@@ -306,7 +317,27 @@ If COMMAND is nil, the key-combo is removed."
           (call-interactively 'key-combo)
           (buffer-string)
           ))
-      (desc "undo")
+      ;;(desc "key-combo-undo")
+      ;; (expect ""
+      ;;   (with-temp-buffer
+      ;;     (buffer-enable-undo)
+      ;;     (key-combo-undo '((lambda() (insert "a")) . nil))
+      ;;     (buffer-string)
+      ;;     ))
+      ;; (expect "a"
+      ;;   (with-temp-buffer
+      ;;     (buffer-enable-undo)
+      ;;     (key-combo-undo '((lambda() (insert "a")) . (lambda() (insert "a"))))
+      ;;     (buffer-string)
+      ;;     ))
+      ;; (desc "key-combo-command-execute")
+      ;; (expect "a"
+      ;;   (with-temp-buffer
+      ;;     (buffer-enable-undo)
+      ;;     (key-combo-undo '((lambda() (insert "a")) . (lambda() (insert "a"))))
+      ;;     (buffer-string)
+      ;;     ))
+     (desc "undo")
       (expect "="
         (with-temp-buffer
           (setq unread-command-events (listify-key-sequence "=\C-a"))
