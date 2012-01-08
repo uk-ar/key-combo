@@ -52,11 +52,17 @@
 
 ;;; History:
 
-;; Revision 0.2
+;; Revision 0.3
+;; * Not to cycle candidates when 1 sequence key
 ;; * Bugfix by tomykaira
-
-;; Revision 0.1
+;; * Refactoring
+;; * Add test cases
+;;
+;; Revision 0.2
 ;; * First release
+;;
+;; Revision 0.1
+;; * Initial revision
 
 ;; Code goes here
 (require 'cl)
