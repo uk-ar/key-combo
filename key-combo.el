@@ -26,7 +26,7 @@
 ;; Author: Yuuki Arisawa <yuuki.ari@gmail.com>
 ;; URL:https://github.com/uk-ar/key-combo
 ;; Created: 30 November 2011
-;; Version: 0.2
+;; Version: 0.3
 ;; Keywords: keyboard input
 
 ;;; Commentary:
@@ -39,19 +39,23 @@
 ;;
 ;; Add to your ~/.emacs
 ;;
-;; (require 'key-combo)
+;;  (require 'key-combo)
 ;;
 ;; and some chords, for example
 ;;
-;; (key-combo-define-global (kbd "=") '(" = " " == " " === " ))
-;; (key-combo-define-global (kbd "=>") " => ")
+;;  (key-combo-define-global (kbd "=") '(" = " " == " " === " ))
+;;  (key-combo-define-global (kbd "=>") " => ")
 ;;
 ;;
 ;; or load default settings
-;; (key-combo-load-default)
+;;
+;;  (key-combo-load-default)
 
 ;;; History:
 
+;; Revision 0.
+;; * 
+;;
 ;; Revision 0.3
 ;; * Not to cycle candidates when 1 sequence key
 ;; * Bugfix by tomykaira
