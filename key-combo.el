@@ -200,6 +200,13 @@ If COMMAND is nil, the key-combo is removed."
         ))
     )
 
+  (defvar key-combo-minor-mode-map (make-sparse-keymap))
+  (define-minor-mode key-combo-minor-mode
+    "Toggle key combo."
+    :global t
+    :lighter " KC"
+    :init-value t)
+
   (defun key-combo-define-global (keys command)
     "Define a key-combo of two keys in KEYS starting a COMMAND.
 \nKEYS can be a string or a vector of two elements. Currently only elements
@@ -207,26 +214,13 @@ that corresponds to ascii codes in the range 32 to 126 can be used.
 \nCOMMAND can be an interactive function, a string, or nil.
 If COMMAND is nil, the key-combo is removed."
     ;;(interactive "sSet key chord globally (2 keys): \nCSet chord \"%s\" to command: ")
-    (key-combo-define (current-global-map) keys command))
+    (key-combo-define key-combo-minor-mode-map keys command))
   )
-
-(defun key-combo-define-local (keys command)
-  "Define a key-combo of two keys in KEYS starting a COMMAND.
-\nKEYS can be a string or a vector of two elements. Currently only elements
-that corresponds to ascii codes in the range 32 to 126 can be used.
-\nCOMMAND can be an interactive function, a string, or nil.
-If COMMAND is nil, the key-combo is removed."
-  ;;(interactive "sSet key chord locally (2 keys): \nCSet chord \"%s\" to command: ")
-  (key-combo-define (current-local-map) keys command))
 
 (defun key-combo-load-default ()
-  (key-combo-load-default-1 (current-global-map))
+  (key-combo-load-default-1 key-combo-minor-mode-map)
   )
 ;;
-;;(key-combo-load-default)
-(defun key-combo-load-default-local ()
-  (key-combo-load-default-1 (current-local-map))
-  )
 
 (defun key-combo-load-default-1 (map)
   (key-combo-define map (kbd "=") '(" = " " == " " === " ))
@@ -241,7 +235,6 @@ If COMMAND is nil, the key-combo is removed."
   ;; (key-combo-define map (kbd "<<") " << ")
   )
 
-;;(key-combo-load-default)
 ;;ok
 ;;(key-combo-define-global (kbd "=") '(" = " " == " "="))
 ;;(key-combo-define-global (kbd "(=") "(=`!!')")
@@ -433,8 +426,9 @@ If COMMAND is nil, the key-combo is removed."
       )))
 ;;todo filter
 ;; filter for mode
-;; filter for ""
-;; unset key
+;; filter for inside string ""
+;; filter for inside comment ;;
+
 ;; support lamda func
 (provide 'key-combo)
 ;;; key-combo.el ends here
