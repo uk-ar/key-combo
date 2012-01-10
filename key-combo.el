@@ -203,11 +203,10 @@ that corresponds to ascii codes in the range 32 to 126 can be used.
 \nCOMMAND can be an interactive function, a string, or nil.
 If COMMAND is nil, the key-combo is removed."
     ;;copy from key-chord-define
-    (let* ((key1 (substring keys 0 1))
-           (command1 (key-combo-lookup-key key1)))
       (cond
        ((eq commands nil) nil)
-       ((listp (cdr-safe commands));;for sequence '(" = " " == ")
+       ;;for sequence '(" = " " == ")
+       ((and (listp commands) (listp (cdr-safe commands)))
         (let ((base-key keys)
               (seq-keys keys))
           (mapc '(lambda(command)
@@ -216,11 +215,10 @@ If COMMAND is nil, the key-combo is removed."
                 commands)))
        (t
         (key-combo-define1 keymap keys commands))
-       )))
+       ))
 
   (defun key-combo-define1 (keymap keys command)
     ;;copy from key-chord-define
-    ;;for keys = commands '(" = " " == ")
     (let* ((key1 (substring keys 0 1))
            (command1 (key-combo-lookup-key key1)))
       (cond
