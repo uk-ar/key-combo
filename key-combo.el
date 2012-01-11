@@ -26,7 +26,7 @@
 ;; Author: Yuuki Arisawa <yuuki.ari@gmail.com>
 ;; URL:https://github.com/uk-ar/key-combo
 ;; Created: 30 November 2011
-;; Version: 0.3
+;; Version: 0.4
 ;; Keywords: keyboard input
 
 ;;; Commentary:
@@ -53,11 +53,11 @@
 
 ;;; History:
 
-;; Revision 0.
-;; * 
+;; Revision 0.4
+;; * Map key to minor mode to toggle enable and disable.
 ;;
 ;; Revision 0.3
-;; * Not to cycle candidates when 1 sequence key
+;; * Not to cleanup when 1 sequence key
 ;; * Bugfix by tomykaira
 ;; * Refactoring
 ;; * Add test cases
@@ -233,8 +233,8 @@ If COMMAND is nil, the key-combo is removed."
         (key-combo-get-command command)))
      )))
 
-(defvar key-combo-minor-mode-map (make-sparse-keymap))
-(define-minor-mode key-combo-minor-mode
+(defvar key-combo-mode-map (make-sparse-keymap))
+(define-minor-mode key-combo-mode
   "Toggle key combo."
   :global t
   :lighter " KC"
@@ -247,11 +247,11 @@ that corresponds to ascii codes in the range 32 to 126 can be used.
 \nCOMMAND can be an interactive function, a string, or nil.
 If COMMAND is nil, the key-combo is removed."
   ;;(interactive "sSet key chord globally (2 keys): \nCSet chord \"%s\" to command: ")
-  (key-combo-define key-combo-minor-mode-map keys command))
+  (key-combo-define key-combo-mode-map keys command))
 
 
 (defun key-combo-load-default ()
-  (key-combo-load-default-1 key-combo-minor-mode-map)
+  (key-combo-load-default-1 key-combo-mode-map)
   )
 ;;
 
