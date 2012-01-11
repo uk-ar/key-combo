@@ -117,7 +117,7 @@
   (cond
    ((not (cdr-safe command)) nil);;no clean up
    ((commandp (cdr-safe command))
-    (command-execute (cdr command)))
+    (call-interactively (cdr command)))
    ((functionp (cdr-safe command))
     (funcall (cdr command)))
    ))
@@ -127,22 +127,22 @@
    ((not (listp command))
     (command-execute command))
    ((commandp (car command))
-    (command-execute (car command)))
+    (call-interactively (cdr command)))
    ((functionp (car command))
     (funcall (car command))))
   )
 
 ;;bug (C-/
-(defun key-combo()
-  (interactive)
-  (insert last-input-event)
+(defun key-combo(arg)
+  (interactive "P")
+  (call-interactively 'self-insert-command)
+  ;;(key-combo-command-execute '(self-insert-command . delete-backward-char))
   (undo-boundary)
   ;;for undo
   (let* ((same-key last-input-event)
          (all-command-keys (list last-input-event))
          (command (key-combo-lookup all-command-keys))
-         (old-command (key-combo-get-command
-                       (char-to-string last-input-event))))
+         (old-command '(self-insert-command . delete-backward-char)))
     (catch 'invalid-event
       (while command
         (key-combo-undo old-command)
@@ -422,6 +422,7 @@ If COMMAND is nil, the key-combo is removed."
           (setq unread-command-events (listify-key-sequence "=\C-a"))
           (read-event)
           (buffer-enable-undo)
+          (setq last-command-event ?=);;for self-insert-keys
           (call-interactively 'key-combo)
           (undo)
           (buffer-string)
