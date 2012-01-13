@@ -120,6 +120,7 @@
     (call-interactively (cdr command)))
    ((functionp (cdr-safe command))
     (funcall (cdr command)))
+   (t (error "%s is not command" (cdr-safe command)))
    ))
 
 (defun key-combo-command-execute(command)
@@ -127,16 +128,17 @@
    ((not (listp command))
     (command-execute command))
    ((commandp (car command))
-    (call-interactively (cdr command)))
+    (call-interactively (car command)))
    ((functionp (car command))
-    (funcall (car command))))
-  )
+    (funcall (car command)))
+   (t (error "%s is not command" (car command)))))
 
 ;;bug (C-/
 (defun key-combo(arg)
   (interactive "P")
-  (call-interactively 'self-insert-command)
-  ;;(key-combo-command-execute '(self-insert-command . delete-backward-char))
+  ;;(call-interactively 'self-insert-command)
+  (key-combo-command-execute
+   '(self-insert-command . delete-backward-char))
   (undo-boundary)
   ;;for undo
   (let* ((same-key last-input-event)
@@ -171,6 +173,8 @@
   );;end key-combo
 
 (defun key-combo-get-command(command)
+  (unless (key-combo-elementp command)
+    (error "%s is not command" command))
   (cond
    ((functionp command) command)
    ((listp command) command)
@@ -196,6 +200,17 @@
    );;end cond
   )
 
+(defun key-combo-elementp (element)
+  (or (or (functionp element)
+          (stringp element)
+          (null element))
+      (and (or (functionp (car-safe element))
+               (stringp (car-safe element)))
+           (or (functionp (cdr-safe element))
+                (stringp (cdr-safe element))
+                (null (cdr-safe element))
+                ))))
+
 (defun key-combo-define (keymap keys commands)
   "Define in KEYMAP, a key-combo of two keys in KEYS starting a COMMAND.
 \nKEYS can be a string or a vector of two elements. Currently only elements
@@ -204,9 +219,8 @@ that corresponds to ascii codes in the range 32 to 126 can be used.
 If COMMAND is nil, the key-combo is removed."
   ;;copy from key-chord-define
   (cond
-   ((eq commands nil) nil)
    ;;for sequence '(" = " " == ")
-   ((and (listp commands) (listp (cdr-safe commands)))
+   ((not (key-combo-elementp commands))
     (let ((base-key keys)
           (seq-keys keys))
       (mapc '(lambda(command)
@@ -217,28 +231,24 @@ If COMMAND is nil, the key-combo is removed."
     (key-combo-define1 keymap keys commands))
    ))
 
+;;(key-combo-define-global (kbd ">") '(">"))
 (defun key-combo-define1 (keymap keys command)
   ;;copy from key-chord-define
+  (unless (key-combo-elementp command)
+    (error "%s is not command" command))
+  (if (and (stringp (car-safe command));;define-key error for ("a")
+           (null (cdr-safe command)))
+      (setq command (car-safe command)))
   (let* ((key1 (substring keys 0 1))
          (command1 (key-combo-lookup-key key1)))
-    (cond
-     ((not (eq command1 'key-combo))
-      (define-key keymap key1 'key-combo)
-      (define-key keymap
-        (vector 'key-combo (intern key1)) 'key-combo)
-      (define-key keymap (vector 'key-combo (intern keys))
-        (key-combo-get-command command)))
-     (t
-      (define-key keymap (vector 'key-combo (intern keys))
-        (key-combo-get-command command)))
-     )))
+    (cond ((eq command nil)
+           (define-key keymap key1 nil))
+          ((not (eq command1 'key-combo))
+           (define-key keymap key1 'key-combo))))
+  (define-key keymap (vector 'key-combo (intern keys))
+    (key-combo-get-command command)))
 
 (defvar key-combo-mode-map (make-sparse-keymap))
-(define-minor-mode key-combo-mode
-  "Toggle key combo."
-  :global t
-  :lighter " KC"
-  :init-value t)
 
 (defun key-combo-define-global (keys command)
   "Define a key-combo of two keys in KEYS starting a COMMAND.
@@ -249,23 +259,38 @@ If COMMAND is nil, the key-combo is removed."
   ;;(interactive "sSet key chord globally (2 keys): \nCSet chord \"%s\" to command: ")
   (key-combo-define key-combo-mode-map keys command))
 
+(defvar key-combo-default-alist
+  '(("=" . (" = " " == " " === " ))
+    ("=>" . " => ")
+    (">" . (">"))
+    (">=" . " >= ")))
+
+(defun key-combo-unload-default ()
+  (key-combo-load-default-1
+   key-combo-mode-map
+   (mapcar (lambda(x)
+             (cons (car x)
+                   (make-list (safe-length (cdr-safe x)) nil)))
+           key-combo-default-alist)))
 
 (defun key-combo-load-default ()
-  (key-combo-load-default-1 key-combo-mode-map)
+  (key-combo-load-default-1 key-combo-mode-map key-combo-default-alist)
   )
 ;;
 
-(defun key-combo-load-default-1 (map)
-  (key-combo-define map (kbd "=") '(" = " " == " " === " ))
-  ;; (key-combo-define map (kbd "+") '(" + " "++"))
-  ;; (key-combo-define map (kbd "&") '(" & " "&&"))
-  ;;(key-combo-define map (kbd "-") '(" - " "-"))
-  (key-combo-define map (kbd "=>") " => ")
-  (key-combo-define map (kbd ">") '(">"))
-  (key-combo-define map (kbd ">=") " >= ")
-  ;; (key-combo-define map (kbd "=~") " =~ ")
-  ;; (key-combo-define map (kbd "(=") "(=`!!')")
-  ;; (key-combo-define map (kbd "<<") " << ")
+(defun key-combo-load-default-1 (map keys)
+ (dolist (key keys)
+   (key-combo-define map (read-kbd-macro (car key))(cdr key)))
+  ;; (key-combo-define map (kbd "=") '(" = " " == " " === " ))
+  ;; ;; (key-combo-define map (kbd "+") '(" + " "++"))
+  ;; ;; (key-combo-define map (kbd "&") '(" & " "&&"))
+  ;; ;;(key-combo-define map (kbd "-") '(" - " "-"))
+  ;; (key-combo-define map (kbd "=>") " => ")
+  ;; (key-combo-define map (kbd ">") '(">"))
+  ;; (key-combo-define map (kbd ">=") " >= ")
+  ;; ;; (key-combo-define map (kbd "=~") " =~ ")
+  ;; ;; (key-combo-define map (kbd "(=") "(=`!!')")
+  ;; ;; (key-combo-define map (kbd "<<") " << ")
   )
 
 ;;ok
@@ -316,6 +341,7 @@ If COMMAND is nil, the key-combo is removed."
         (with-temp-buffer
           (setq unread-command-events (listify-key-sequence ">>\C-a"))
           (read-event)
+          (setq last-command-event ?>)
           (call-interactively 'key-combo)
           (call-interactively 'key-combo)
           ;;(insert (char-to-string(car unread-command-events)))
@@ -357,6 +383,8 @@ If COMMAND is nil, the key-combo is removed."
           (call-interactively 'key-combo)
           (buffer-string)
           ))
+      ;;(key-combo-undo '(self-insert-command . delete-backword-char))
+      ;;(key-combo-command-execute '(self-insert-command1 . delete-backward-char))
       ;;(desc "key-combo-undo")
       ;; (expect ""
       ;;   (with-temp-buffer
@@ -402,19 +430,23 @@ If COMMAND is nil, the key-combo is removed."
           (buffer-string)
           ))
       (desc "key-combo-define")
-      (expect (mock (define-key * * *) :times 3);;=> nil
+      (expect (error)
+        (key-combo-define-global "a" 'wrong-command))
+      (expect (no-error)
+        (key-combo-define-global "a" 'self-insert-command))
+      (expect (mock (define-key * * *) :times 2);;=> nil
         (stub key-combo-lookup-key => nil)
-        (key-combo-define (current-global-map) "a" "a")
+        (key-combo-define key-combo-mode-map "a" "a")
         )
       (expect (mock (define-key * * *) :times 1);;=> nil
         ;;(not-called define-key)
         (stub key-combo-lookup-key =>'key-combo)
-        (key-combo-define (current-global-map) "a" "a")
+        (key-combo-define key-combo-mode-map "a" "a")
         )
       (expect (mock (define-key * * *) :times 2);;(not-called define-key)
         ;;(mock   (define-key * * *) :times 0);;=> nil
         (stub key-combo-lookup-key =>'key-combo)
-        (key-combo-define (current-global-map) "a" '("a" "bb"))
+        (key-combo-define key-combo-mode-map "a" '("a" "bb"))
         )
       (desc "undo")
       (expect "="
@@ -432,6 +464,7 @@ If COMMAND is nil, the key-combo is removed."
           (setq unread-command-events (listify-key-sequence "==\C-a"))
           (read-event)
           (buffer-enable-undo)
+          (setq last-command-event ?=)
           (call-interactively 'key-combo)
           (undo)
           (buffer-string)
@@ -502,7 +535,88 @@ If COMMAND is nil, the key-combo is removed."
           (buffer-string)))
       (expect nil
         (key-combo-lookup [?= ?= ?= ?=]))
-
+      (desc "key-combo-elementp")
+      (expect t
+        (every 'null
+               ;;(identity
+               (mapcar (lambda(command)
+                         (progn (key-combo-define-global (kbd ">") command)
+                                (null (key-combo-lookup ">"))))
+                       '((">" . ">")
+                         (">" . (lambda() ()))
+                         ((lambda() ()) . ">")
+                         (lambda()())
+                         ((lambda() ()) . (lambda() ()))
+                         ">"
+                         ((lambda()()) . nil)
+                         ((lambda()()))
+                         (">" . nil)
+                         (">")
+                         (self-insert-command . delete-backward-char)
+                         self-insert-command
+                         (self-insert-command . nil)
+                         (self-insert-command)
+                         ))))
+      (expect t
+        (every 'identity
+               (mapcar (lambda(x) (key-combo-elementp x))
+                       '((">" . ">")
+                         (">" . (lambda() ()))
+                         ((lambda() ()) . ">")
+                         (lambda()())
+                         ((lambda() ()) . (lambda() ()))
+                         ">"
+                         nil
+                         ((lambda()()) . nil)
+                         ((lambda()()))
+                         (">" . nil)
+                         (">")
+                         (self-insert-command . delete-backward-char)
+                         self-insert-command
+                         (self-insert-command . nil)
+                         (self-insert-command)
+                         ))))
+      (expect t
+        (every 'null
+               (mapcar (lambda(x) (key-combo-elementp x))
+                       '(((">" . ">"))
+                         ((">" . (lambda() ())))
+                         (((lambda()()) . ">"))
+                         (((lambda()()) . (lambda() ())))
+                         (nil)
+                         ((self-insert-command . delete-backward-char))
+                         ((nil . self-insert-command))
+                         (wrong-command . wrong-command)
+                         (wrong-command . nil)
+                         (nil . wrong-command)
+                         (nil . self-insert-command)
+                         ))))
+      (expect t
+        (every 'null
+               (mapcar (lambda(x) (key-combo-elementp x))
+                       '((">" ">")
+                         (">" (lambda()()))
+                         ((lambda()()) ">")
+                         ((lambda()()) ((lambda()())))
+                         (((lambda()()) ">") ">")
+                         ((">" (lambda()())) ">")
+                         (">"                ((lambda()())">"))
+                         (">"                (">" (lambda()())))
+                         ((lambda()())     ((lambda()()) ">"))
+                         (((lambda()()) ">") (lambda()()))
+                         ((lambda()())     (">" (lambda()())))
+                         ((">" (lambda()())) (lambda()()))
+                         (">" self-insert-command)
+                         (self-insert-command ">")
+                         (self-insert-command (self-insert-command))
+                         ((self-insert-command ">") ">")
+                         ((">" self-insert-command) ">")
+                         (">"                (self-insert-command">"))
+                         (">"                (">" self-insert-command))
+                         (self-insert-command     (self-insert-command ">"))
+                         ((self-insert-command ">") self-insert-command)
+                         (self-insert-command     (">" self-insert-command))
+                         ((">" self-insert-command)  self-insert-command)))))
       ;; (desc "vertically")
       ;; (expect (mock (split-window-vertically 10))
       ;;         (stub y-or-n-p  => nil)
@@ -518,6 +632,14 @@ If COMMAND is nil, the key-combo is removed."
       ;;         (stub split-window-vertically)
       ;;         (test))
       )))
+
+;;;###autoload
+(define-minor-mode key-combo-mode
+  "Toggle key combo."
+  :global t
+  :lighter " KC"
+  :init-value t)
+
 ;;todo filter
 ;; filter for mode
 ;; filter for inside string ""
