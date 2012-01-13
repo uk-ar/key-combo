@@ -26,7 +26,7 @@
 ;; Author: Yuuki Arisawa <yuuki.ari@gmail.com>
 ;; URL:https://github.com/uk-ar/key-combo
 ;; Created: 30 November 2011
-;; Version: 0.4
+;; Version: 0.5
 ;; Keywords: keyboard input
 
 ;;; Commentary:
@@ -53,6 +53,9 @@
 
 ;;; History:
 
+;; Revision 0.5 2012/01/13 23:02:39
+;; * Support function as key-combo command
+;;
 ;; Revision 0.4
 ;; * Map key to minor mode to toggle enable and disable.
 ;;
