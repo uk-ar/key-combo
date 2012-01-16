@@ -26,7 +26,7 @@
 ;; Author: Yuuki Arisawa <yuuki.ari@gmail.com>
 ;; URL:https://github.com/uk-ar/key-combo
 ;; Created: 30 November 2011
-;; Version: 0.5
+;; Version: 0.6
 ;; Keywords: keyboard input
 
 ;;; Commentary:
@@ -53,9 +53,10 @@
 
 ;;; History:
 
-;; Revision 0.5 2012/01/16 21:17:01
+;; Revision 0.6 2012/01/16 21:17:01
 ;; * Allow cleanup function as nil
-;; * Add key-combo-return function, which can move to point of command beginning.
+;; * Add key-combo-return function,
+;; which can move to point of command beginning.
 ;; * Allow meta key for key-combo key.
 ;; * Save undo history when self-insert-command.
 ;;
