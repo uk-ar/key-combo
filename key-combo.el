@@ -53,6 +53,12 @@
 
 ;;; History:
 
+;; Revision 0.5 2012/01/16 21:17:01
+;; * Allow cleanup function as nil
+;; * Add key-combo-return function, which can move to point of command beginning.
+;; * Allow meta key for key-combo key.
+;; * Save undo history when self-insert-command.
+;;
 ;; Revision 0.5 2012/01/13 23:02:39
 ;; * Support function as key-combo command
 ;;
@@ -148,12 +154,18 @@
   (interactive "P")
   (unless (key-combo-lookup (list last-input-event))
     (error "invalid call"))
+  (key-combo-mode 0)
+  (cond
+   ((eq 'self-insert-command (key-combo-lookup-key
+                              (key-description (list last-input-event))))
+      (key-combo-command-execute
+       '(self-insert-command . delete-backward-char))
+      (undo-boundary)
+      (key-combo-undo
+       '(self-insert-command . delete-backward-char))))
+   (key-combo-mode 1)
+
   ;;(call-interactively 'self-insert-command)
-  (key-combo-command-execute
-   '(self-insert-command . delete-backward-char))
-  (undo-boundary)
-  (key-combo-undo
-   '(self-insert-command . delete-backward-char))
   ;;for undo
   (let* ((same-key last-input-event)
          (all-command-keys (list last-input-event))
