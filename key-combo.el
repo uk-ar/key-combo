@@ -113,7 +113,8 @@
          (intern
           (if (characterp events)
               (char-to-string events)
-            (mapconcat 'char-to-string events "")))))
+            (key-description events);;for vector
+            ))))
     (key-combo-lookup-key (vector 'key-combo key))))
 
 (defun key-combo-undo(command)
@@ -139,15 +140,20 @@
 ;;bug (C-/
 (defun key-combo(arg)
   (interactive "P")
+  (unless (key-combo-lookup (list last-input-event))
+    (error "invalid call"))
   ;;(call-interactively 'self-insert-command)
   (key-combo-command-execute
    '(self-insert-command . delete-backward-char))
   (undo-boundary)
+  (key-combo-undo
+   '(self-insert-command . delete-backward-char))
   ;;for undo
   (let* ((same-key last-input-event)
          (all-command-keys (list last-input-event))
          (command (key-combo-lookup all-command-keys))
-         (old-command '(self-insert-command . delete-backward-char)))
+         (old-command nil)
+         (key-combo-start-position (cons (point) (window-start))))
     (catch 'invalid-event
       (while command
         (key-combo-undo old-command)
@@ -248,7 +254,7 @@ If COMMAND is nil, the key-combo is removed."
            (define-key keymap key1 nil))
           ((not (eq command1 'key-combo))
            (define-key keymap key1 'key-combo))))
-  (define-key keymap (vector 'key-combo (intern keys))
+  (define-key keymap (vector 'key-combo (intern (key-description keys)))
     (key-combo-get-command command)))
 
 (defvar key-combo-mode-map (make-sparse-keymap))
@@ -266,7 +272,10 @@ If COMMAND is nil, the key-combo is removed."
   '(("=" . (" = " " == " " === " ))
     ("=>" . " => ")
     (">" . (">"))
-    (">=" . " >= ")))
+    (">=" . " >= ")
+    ("C-a" . ((back-to-indentation) (beginning-of-line) (beginning-of-buffer) (key-combo-return)))
+    ("C-e" . ((end-of-line) (end-of-buffer) (key-combo-return)))
+    ))
 
 (defun key-combo-unload-default ()
   (key-combo-load-default-1
@@ -277,8 +286,16 @@ If COMMAND is nil, the key-combo is removed."
            key-combo-default-alist)))
 
 (defun key-combo-load-default ()
+  (key-combo-mode 1)
   (key-combo-load-default-1 key-combo-mode-map key-combo-default-alist)
   )
+
+(defun key-combo-return ()
+  "Return to the position when sequence of calls of the same command was started."
+  (if (boundp 'key-combo-start-position)
+      (progn
+        (goto-char (car key-combo-start-position))
+        (set-window-start (selected-window) (cdr key-combo-start-position)))))
 ;;
 
 (defun key-combo-load-default-1 (map keys)
@@ -386,6 +403,40 @@ If COMMAND is nil, the key-combo is removed."
           (call-interactively 'key-combo)
           (buffer-string)
           ))
+      (expect "I"
+        (with-temp-buffer
+          (insert "B\n IP")
+          (setq unread-command-events (listify-key-sequence "\C-a\C-g"))
+          (read-event)
+          (call-interactively 'key-combo)
+          (char-to-string(following-char))
+          ))
+      (expect " "
+        (with-temp-buffer
+          (insert "B\n IP")
+          (setq unread-command-events (listify-key-sequence "\C-a\C-a\C-g"))
+          (read-event)
+          (call-interactively 'key-combo)
+          (char-to-string(following-char))
+          ))
+      (expect "B"
+        (with-temp-buffer
+          (insert "B\n IP")
+          (setq unread-command-events (listify-key-sequence "\C-a\C-a\C-a\C-g"))
+          (read-event)
+          (call-interactively 'key-combo)
+          (char-to-string(following-char))
+          ))
+      (expect "P"
+        (with-temp-buffer
+          (insert "B\n IP")
+          (setq unread-command-events
+                (listify-key-sequence "\C-a\C-a\C-a\C-a\C-g"))
+          (read-event)
+          (backward-char)
+          (call-interactively 'key-combo)
+          (char-to-string(following-char))
+          ))
       ;;(key-combo-undo '(self-insert-command . delete-backword-char))
       ;;(key-combo-command-execute '(self-insert-command1 . delete-backward-char))
       ;;(desc "key-combo-undo")
@@ -437,6 +488,8 @@ If COMMAND is nil, the key-combo is removed."
         (key-combo-define-global "a" 'wrong-command))
       (expect (no-error)
         (key-combo-define-global "a" 'self-insert-command))
+      (expect (no-error)
+        (key-combo-define-global (kbd "C-M-g") 'self-insert-command))
       (expect (mock (define-key * * *) :times 2);;=> nil
         (stub key-combo-lookup-key => nil)
         (key-combo-define key-combo-mode-map "a" "a")
@@ -457,7 +510,7 @@ If COMMAND is nil, the key-combo is removed."
           (setq unread-command-events (listify-key-sequence "=\C-a"))
           (read-event)
           (buffer-enable-undo)
-          (setq last-command-event ?=);;for self-insert-keys
+          (setq last-command-event ?=);;for self-insert-command
           (call-interactively 'key-combo)
           (undo)
           (buffer-string)
@@ -493,29 +546,62 @@ If COMMAND is nil, the key-combo is removed."
       (expect " = "
         (with-temp-buffer
           (funcall
-           (car (key-combo-lookup-key (vector 'key-combo (intern "=")))))
+           (car (key-combo-lookup-key
+                 (vector 'key-combo (intern (key-description "="))))))
           (buffer-string)
           ))
       (expect " == "
         (with-temp-buffer
           (funcall
-           (car (key-combo-lookup-key (vector 'key-combo (intern "==")))))
+           (car (key-combo-lookup-key
+                 (vector 'key-combo (intern (key-description "=="))))))
           (buffer-string)))
       (expect " => "
         (with-temp-buffer
           (funcall
-           (car (key-combo-lookup-key (vector 'key-combo (intern "=>")))))
+           (car (key-combo-lookup-key
+                 (vector 'key-combo (intern (key-description "=>"))))))
           (buffer-string)))
       (expect " === "
         (with-temp-buffer
           (funcall
-           (car (key-combo-lookup-key (vector 'key-combo (intern "===")))))
+           (car (key-combo-lookup-key
+                 (vector 'key-combo (intern (key-description "==="))))))
           (buffer-string)))
       (expect nil
-        (key-combo-lookup-key (vector 'key-combo (intern "===="))))
+        (key-combo-lookup-key
+         (vector 'key-combo (intern (key-description "====")))))
       (expect nil
-        (key-combo-lookup-key (vector 'key-combo (intern "====="))))
+        (key-combo-lookup-key
+         (vector 'key-combo (intern (key-description "=====")))))
+      (expect 'self-insert-command
+        (prog2
+            (key-combo-mode 0)
+            (key-combo-lookup-key (kbd "="))
+          (key-combo-mode 1)))
       (desc "key-combo-lookup")
+      (expect " = "
+        (with-temp-buffer
+          (funcall
+           (car (key-combo-lookup "=")))
+          (buffer-string)))
+      (expect " == "
+        (with-temp-buffer
+          (funcall
+           (car (key-combo-lookup "==")))
+          (buffer-string)))
+      (expect " == "
+        (with-temp-buffer
+          (key-combo-define-global (kbd "C-M-h") " == ")
+          (funcall
+           (car (key-combo-lookup (kbd "C-M-h"))))
+          (buffer-string)))
+      (expect " === "
+        (with-temp-buffer
+          (key-combo-define-global (kbd "C-M-h C-M-h") " === ")
+          (funcall
+           (car (key-combo-lookup (kbd "C-M-h C-M-h"))))
+          (buffer-string)))
       (expect " = "
         (with-temp-buffer
           (funcall
@@ -640,8 +726,7 @@ If COMMAND is nil, the key-combo is removed."
 (define-minor-mode key-combo-mode
   "Toggle key combo."
   :global t
-  :lighter " KC"
-  :init-value t)
+  :lighter " KC")
 
 ;;todo filter
 ;; filter for mode
