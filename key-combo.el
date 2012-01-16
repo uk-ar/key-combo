@@ -119,6 +119,8 @@
 
 (defun key-combo-undo(command)
   (cond
+   ((functionp command)
+    nil)
    ((not (cdr-safe command)) nil);;no clean up
    ((commandp (cdr-safe command))
     (call-interactively (cdr command)))
@@ -131,6 +133,10 @@
   (cond
    ((not (listp command))
     (command-execute command))
+   ((commandp command)
+    (call-interactively command))
+   ((functionp command)
+    (funcall command))
    ((commandp (car command))
     (call-interactively (car command)))
    ((functionp (car command))
@@ -273,8 +279,8 @@ If COMMAND is nil, the key-combo is removed."
     ("=>" . " => ")
     (">" . (">"))
     (">=" . " >= ")
-    ("C-a" . ((back-to-indentation) (beginning-of-line) (beginning-of-buffer) (key-combo-return)))
-    ("C-e" . ((end-of-line) (end-of-buffer) (key-combo-return)))
+    ("C-a" . ((back-to-indentation) (beginning-of-line) (lambda () (goto-char (point-min))) (key-combo-return)))
+    ("C-e" . ((end-of-line) (lambda () (goto-char (point-max))) (key-combo-return)))
     ))
 
 (defun key-combo-unload-default ()
