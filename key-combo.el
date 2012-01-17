@@ -150,23 +150,30 @@
     (funcall (car command)))
    (t (error "%s is not command" (car command)))))
 
-;;bug (C-/
+(defun key-combo-lookup-original (key)
+  (prog2
+      (key-combo-mode -1)
+      (key-combo-lookup-key key)
+      (key-combo-mode 1)
+ ))
+;; (key-combo-lookup-original (key-description (list ?b)))
+;; (key-combo-lookup-original "b")
+;; (key-combo-lookup-original (key-description (list ?=)))
+;; (key-combo-lookup-original "=")
+
 (defun key-combo(arg)
   (interactive "P")
   (unless (key-combo-lookup (list last-input-event))
     (error "invalid call"))
-  (key-combo-mode 0)
-  (cond
-   ((eq 'self-insert-command (key-combo-lookup-key
-                              (key-description (list last-input-event))))
+  (if (eq 'self-insert-command
+          (key-combo-lookup-original
+           (key-description (list last-input-event))))
+    (progn
       (key-combo-command-execute
        '(self-insert-command . delete-backward-char))
       (undo-boundary)
       (key-combo-undo
        '(self-insert-command . delete-backward-char))))
-   (key-combo-mode 1)
-
-  ;;(call-interactively 'self-insert-command)
   ;;for undo
   (let* ((same-key last-input-event)
          (all-command-keys (list last-input-event))
