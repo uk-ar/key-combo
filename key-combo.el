@@ -464,28 +464,55 @@ If COMMAND is nil, the key-combo is removed."
           (call-interactively 'key-combo)
           (char-to-string(following-char))
           ))
-      ;;(key-combo-undo '(self-insert-command . delete-backword-char))
-      ;;(key-combo-command-execute '(self-insert-command1 . delete-backward-char))
-      ;;(desc "key-combo-undo")
-      ;; (expect ""
-      ;;   (with-temp-buffer
-      ;;     (buffer-enable-undo)
-      ;;     (key-combo-undo '((lambda() (insert "a")) . nil))
-      ;;     (buffer-string)
-      ;;     ))
-      ;; (expect "a"
-      ;;   (with-temp-buffer
-      ;;     (buffer-enable-undo)
-      ;;     (key-combo-undo '((lambda() (insert "a")) . (lambda() (insert "a"))))
-      ;;     (buffer-string)
-      ;;     ))
-      ;; (desc "key-combo-command-execute")
-      ;; (expect "a"
-      ;;   (with-temp-buffer
-      ;;     (buffer-enable-undo)
-      ;;     (key-combo-undo '((lambda() (insert "a")) . (lambda() (insert "a"))))
-      ;;     (buffer-string)
-      ;;     ))
+      (desc "key-combo-undo")
+      (expect ""
+        (with-temp-buffer
+          (buffer-enable-undo)
+          (key-combo-undo '((lambda() (insert "a")) . nil))
+          (buffer-string)
+          ))
+      (expect "a"
+        (with-temp-buffer
+          (buffer-enable-undo)
+          (key-combo-undo
+           '((lambda() (insert "a")) . (lambda() (insert "a"))))
+          (buffer-string)
+          ))
+      (expect "b"
+        (with-temp-buffer
+          (buffer-enable-undo)
+          (let ((last-command-event ?b))
+            (key-combo-undo
+             '((lambda() (insert "a")) . self-insert-command)))
+          (buffer-string)
+          ))
+      (expect (error)
+        (with-temp-buffer
+          (buffer-enable-undo)
+          (key-combo-undo '((lambda() (insert "a")) . wrong-command))
+          (buffer-string)
+          ))
+      (desc "key-combo-command-execute")
+      (expect "a"
+        (with-temp-buffer
+          (buffer-enable-undo)
+          (key-combo-command-execute '((lambda() (insert "a")) . nil))
+          (buffer-string)
+          ))
+      (expect (error)
+        (with-temp-buffer
+          (buffer-enable-undo)
+          (key-combo-command-execute '(wrong-command . nil))
+          (buffer-string)
+          ))
+      (expect "b"
+        (with-temp-buffer
+          (buffer-enable-undo)
+          (let ((last-command-event ?b))
+            (key-combo-command-execute '(self-insert-command . nil)))
+          (buffer-string)
+          ))
+
       (desc "key-combo-get-command")
       (expect "a"
         (with-temp-buffer
