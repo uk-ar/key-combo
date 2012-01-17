@@ -213,6 +213,10 @@
         (cons
          (lambda()
            (insert pre)
+           (if (eq ?  (aref command 0))
+               (save-excursion
+                 (key-combo-return)
+                 (just-one-space)))
            (save-excursion (insert post)))
          (lambda()
            (delete-backward-char (length pre))
@@ -222,7 +226,11 @@
     (lexical-let ((command command))
       (cons
        (lambda()
-         (insert command))
+         (insert command)
+         (if (eq ?  (aref command 0))
+             (save-excursion
+               (key-combo-return)
+               (just-one-space))))
        (lambda()
          (delete-backward-char (length command))))))
    );;end cond
@@ -552,7 +560,7 @@ If COMMAND is nil, the key-combo is removed."
           (call-interactively 'key-combo)
           (buffer-string)
           ))
-      (expect " =>  = "
+      (expect " => = "
         (with-temp-buffer
           (setq unread-command-events (listify-key-sequence "=>=\C-a"))
           (read-event)
