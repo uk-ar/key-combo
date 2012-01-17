@@ -26,7 +26,7 @@
 ;; Author: Yuuki Arisawa <yuuki.ari@gmail.com>
 ;; URL:https://github.com/uk-ar/key-combo
 ;; Created: 30 November 2011
-;; Version: 0.6
+;; Version: 0.7
 ;; Keywords: keyboard input
 
 ;;; Commentary:
@@ -53,6 +53,9 @@
 
 ;;; History:
 
+;; Revision 0.7 2012/01/17 21:25:10
+;; * Insert white space dwim
+;;
 ;; Revision 0.6 2012/01/16 21:17:01
 ;; * Allow cleanup function as nil
 ;; * Add key-combo-return function,
