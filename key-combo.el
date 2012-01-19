@@ -82,8 +82,7 @@
 ;; * Initial revision
 
 ;; Code goes here
-(require 'cl)
-
+(eval-when-compile (require 'cl))
 
 (defvar key-combo-loop-option 'only-same-key;'allways 'only-same-key 'never
   "Loop mode setting.
@@ -127,31 +126,39 @@
             ))))
     (key-combo-lookup-key (vector 'key-combo key))))
 
-(defun key-combo-undo(command)
-  (cond
-   ((functionp command)
-    nil)
-   ((not (cdr-safe command)) nil);;no clean up
-   ((commandp (cdr-safe command))
-    (call-interactively (cdr command)))
-   ((functionp (cdr-safe command))
-    (funcall (cdr command)))
-   (t (error "%s is not command" (cdr-safe command)))
-   ))
+(defun key-combo-undo ()
+  (let ((buffer-undo-list))
+    (primitive-undo (1+ (key-combo-count-boundary key-combo-undo-list))
+                    key-combo-undo-list)
+    (setq key-combo-undo-list (append buffer-undo-list key-combo-undo-list))
+    ))
 
-(defun key-combo-command-execute(command)
-  (cond
-   ((not (listp command))
-    (command-execute command))
-   ((commandp command)
-    (call-interactively command))
-   ((functionp command)
-    (funcall command))
-   ((commandp (car command))
-    (call-interactively (car command)))
-   ((functionp (car command))
-    (funcall (car command)))
-   (t (error "%s is not command" (car command)))))
+(defun key-combo-command-execute (command)
+  (let ((buffer-undo-list))
+    (cond
+     ((not (listp command))
+      (command-execute command))
+     ((commandp command)
+      (call-interactively command))
+     ((functionp command)
+      (funcall command))
+     ((commandp (car command))
+      (call-interactively (car command)))
+     ((functionp (car command))
+      (funcall (car command)))
+     (t (error "%s is not command" (car command))))
+    (undo-boundary)
+    (setq key-combo-undo-list (append buffer-undo-list key-combo-undo-list))
+    )
+  )
+
+;;(browse-url "http://q.hatena.ne.jp/1226571494")
+(defun key-combo-count-boundary (last-undo-list)
+  (let ((count 0))
+    (while (not (eq last-undo-list nil))
+      (if (null (car last-undo-list)) (setq count (1+ count)))
+      (setq last-undo-list (cdr last-undo-list)))
+    count))
 
 (defun key-combo-lookup-original (key)
   (prog2
@@ -164,37 +171,34 @@
 ;; (key-combo-lookup-original (key-description (list ?=)))
 ;; (key-combo-lookup-original "=")
 
-(defun key-combo(arg)
+(defun key-combo (arg)
   (interactive "P")
-  (unless (key-combo-lookup (list last-input-event))
-    (error "invalid call"))
-  (if (eq 'self-insert-command
-          (key-combo-lookup-original
-           (key-description (list last-input-event))))
-    (progn
-      (key-combo-command-execute
-       '(self-insert-command . delete-backward-char))
-      (undo-boundary)
-      (key-combo-undo
-       '(self-insert-command . delete-backward-char))))
-  ;;for undo
   (let* ((same-key last-input-event)
          (all-command-keys (list last-input-event))
          (command (key-combo-lookup all-command-keys))
-         (old-command nil)
-         (key-combo-start-position (cons (point) (window-start))))
+         (key-combo-undo-list)
+         )
+    (unless (key-combo-lookup (list last-input-event))
+      (error "invalid call"))
+    (if (eq 'self-insert-command
+            (key-combo-lookup-original
+             (key-description (list last-input-event))))
+        (progn
+          (key-combo-command-execute
+           '(self-insert-command . delete-backward-char))
+          (key-combo-undo)))
+    (key-combo-set-start-position (cons (point) (window-start)))
+    ;;for undo
     (catch 'invalid-event
       (while command
-        (key-combo-undo old-command)
+        (key-combo-undo)
         (key-combo-command-execute command)
-        (undo-boundary);;for undo
         (if (not (characterp (read-event))) (throw 'invalid-event t))
         (setq same-key
               (cond ((eq key-combo-loop-option 'allways) t)
                     ((eq key-combo-loop-option 'only-same-key)
                      (if (eq last-input-event same-key) same-key nil))
-                    ((eq key-combo-loop-option 'never) nil))
-              old-command command)
+                    ((eq key-combo-loop-option 'never) nil)))
         (setq all-command-keys (append all-command-keys
                                        (list last-input-event)))
         (setq command (key-combo-lookup all-command-keys))
@@ -207,6 +211,7 @@
       );;end catch
     (setq unread-command-events
           (cons last-input-event unread-command-events))
+    (setq buffer-undo-list (append key-combo-undo-list buffer-undo-list))
     );;end let
   );;end key-combo
 
@@ -223,7 +228,7 @@
         (cons
          (lambda()
            (insert pre)
-           (if (eq ?  (aref command 0))
+           (if (eq ?  (aref pre 0))
                (save-excursion
                  (key-combo-return)
                  (just-one-space)))
@@ -327,24 +332,21 @@ If COMMAND is nil, the key-combo is removed."
   (key-combo-load-default-1 key-combo-mode-map key-combo-default-alist)
   )
 
-(defun key-combo-return ()
-  "Return to the position when sequence of calls of the same command was started."
-  (if (boundp 'key-combo-start-position)
+;;(declare-function key-combo-return "")
+(lexical-let ((key-combo-start-position nil))
+  (defun key-combo-set-start-position(pos)
+    (setq key-combo-start-position pos))
+  (defun key-combo-return ()
+    "Return to the position when sequence of calls of the same command was started."
+    (unless (eq key-combo-start-position nil)
       (progn
         (goto-char (car key-combo-start-position))
         (set-window-start (selected-window) (cdr key-combo-start-position)))))
-;;
+  )
 
 (defun key-combo-load-default-1 (map keys)
  (dolist (key keys)
    (key-combo-define map (read-kbd-macro (car key))(cdr key)))
-  ;; (key-combo-define map (kbd "=") '(" = " " == " " === " ))
-  ;; ;; (key-combo-define map (kbd "+") '(" + " "++"))
-  ;; ;; (key-combo-define map (kbd "&") '(" & " "&&"))
-  ;; ;;(key-combo-define map (kbd "-") '(" - " "-"))
-  ;; (key-combo-define map (kbd "=>") " => ")
-  ;; (key-combo-define map (kbd ">") '(">"))
-  ;; (key-combo-define map (kbd ">=") " >= ")
   ;; ;; (key-combo-define map (kbd "=~") " =~ ")
   ;; ;; (key-combo-define map (kbd "(=") "(=`!!')")
   ;; ;; (key-combo-define map (kbd "<<") " << ")
@@ -394,16 +396,16 @@ If COMMAND is nil, the key-combo is removed."
   (when(fboundp 'expectations)
     (expectations
       (desc "key-combo")
-      (expect ">>"
-        (with-temp-buffer
-          (setq unread-command-events (listify-key-sequence ">>\C-a"))
-          (read-event)
-          (setq last-command-event ?>)
-          (call-interactively 'key-combo)
-          (call-interactively 'key-combo)
-          ;;(insert (char-to-string(car unread-command-events)))
-          (buffer-string)
-          ))
+      ;; (expect ">"
+      ;;   (with-temp-buffer
+      ;;     (setq unread-command-events (listify-key-sequence ">>\C-a"))
+      ;;     (read-event)
+      ;;     (setq last-command-event ?>)
+      ;;     (call-interactively 'key-combo)
+      ;;     ;; (call-interactively 'key-combo)
+      ;;     ;;(insert (char-to-string(car unread-command-events)))
+      ;;     (buffer-string)
+      ;;     ))
       (expect " = "
         (with-temp-buffer
           (setq unread-command-events (listify-key-sequence "=\C-a"))
@@ -475,33 +477,33 @@ If COMMAND is nil, the key-combo is removed."
           (char-to-string(following-char))
           ))
       (desc "key-combo-undo")
-      (expect ""
-        (with-temp-buffer
-          (buffer-enable-undo)
-          (key-combo-undo '((lambda() (insert "a")) . nil))
-          (buffer-string)
-          ))
-      (expect "a"
-        (with-temp-buffer
-          (buffer-enable-undo)
-          (key-combo-undo
-           '((lambda() (insert "a")) . (lambda() (insert "a"))))
-          (buffer-string)
-          ))
-      (expect "b"
-        (with-temp-buffer
-          (buffer-enable-undo)
-          (let ((last-command-event ?b))
-            (key-combo-undo
-             '((lambda() (insert "a")) . self-insert-command)))
-          (buffer-string)
-          ))
-      (expect (error)
-        (with-temp-buffer
-          (buffer-enable-undo)
-          (key-combo-undo '((lambda() (insert "a")) . wrong-command))
-          (buffer-string)
-          ))
+      ;; (expect ""
+      ;;   (with-temp-buffer
+      ;;     (buffer-enable-undo)
+      ;;     (key-combo-undo '((lambda() (insert "a")) . nil))
+      ;;     (buffer-string)
+      ;;     ))
+      ;; (expect "a"
+      ;;   (with-temp-buffer
+      ;;     (buffer-enable-undo)
+      ;;     (key-combo-undo
+      ;;      '((lambda() (insert "a")) . (lambda() (insert "a"))))
+      ;;     (buffer-string)
+      ;;     ))
+      ;; (expect "b"
+      ;;   (with-temp-buffer
+      ;;     (buffer-enable-undo)
+      ;;     (let ((last-command-event ?b))
+      ;;       (key-combo-undo
+      ;;        '((lambda() (insert "a")) . self-insert-command)))
+      ;;     (buffer-string)
+      ;;     ))
+      ;; (expect (error)
+      ;;   (with-temp-buffer
+      ;;     (buffer-enable-undo)
+      ;;     (key-combo-undo '((lambda() (insert "a")) . wrong-command))
+      ;;     (buffer-string)
+      ;;     ))
       (desc "key-combo-command-execute")
       (expect "a"
         (with-temp-buffer
@@ -522,7 +524,6 @@ If COMMAND is nil, the key-combo is removed."
             (key-combo-command-execute '(self-insert-command . nil)))
           (buffer-string)
           ))
-
       (desc "key-combo-get-command")
       (expect "a"
         (with-temp-buffer
@@ -693,7 +694,7 @@ If COMMAND is nil, the key-combo is removed."
         (every 'null
                ;;(identity
                (mapcar (lambda(command)
-                         (progn (key-combo-define-global (kbd ">") command)
+                         (progn (key-combo-define-global ">>" command)
                                 (null (key-combo-lookup ">"))))
                        '((">" . ">")
                          (">" . (lambda() ()))
