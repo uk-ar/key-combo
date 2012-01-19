@@ -118,13 +118,20 @@
         (key-combo-lookup-key1 (current-global-map) key))))
 
 (defun key-combo-lookup (events)
-  (let ((key
-         (intern
-          (if (characterp events)
-              (char-to-string events)
-            (key-description events);;for vector
-            ))))
-    (key-combo-lookup-key (vector 'key-combo key))))
+  (let ((key (if (characterp events)
+                 (single-key-description events)
+               (key-description events))));;for vector
+    (key-combo-lookup-key (vector 'key-combo (intern key)))))
+
+(defun key-combo-lookup-original (events)
+  (let ((key (if (characterp events)
+                 (single-key-description events)
+               (key-description events))));;for vector
+    (prog2
+        (key-combo-mode -1)
+        (key-combo-lookup-key key)
+      (key-combo-mode 1)
+      )))
 
 (defun key-combo-undo ()
   (let ((buffer-undo-list))
@@ -136,19 +143,15 @@
 (defun key-combo-command-execute (command)
   (let ((buffer-undo-list))
     (cond
-     ((not (listp command))
-      (command-execute command))
      ((commandp command)
       (call-interactively command))
      ((functionp command)
       (funcall command))
-     ((commandp (car command))
-      (call-interactively (car command)))
-     ((functionp (car command))
-      (funcall (car command)))
      (t (error "%s is not command" (car command))))
     (undo-boundary)
-    (setq key-combo-undo-list (append buffer-undo-list key-combo-undo-list))
+    (if (boundp 'key-combo-undo-list)
+        (setq key-combo-undo-list
+              (append buffer-undo-list key-combo-undo-list)))
     )
   )
 
@@ -160,32 +163,19 @@
       (setq last-undo-list (cdr last-undo-list)))
     count))
 
-(defun key-combo-lookup-original (key)
-  (prog2
-      (key-combo-mode -1)
-      (key-combo-lookup-key key)
-      (key-combo-mode 1)
- ))
-;; (key-combo-lookup-original (key-description (list ?b)))
-;; (key-combo-lookup-original "b")
-;; (key-combo-lookup-original (key-description (list ?=)))
-;; (key-combo-lookup-original "=")
-
+;;(key-combo-lookup-original ?=)
 (defun key-combo (arg)
   (interactive "P")
   (let* ((same-key last-input-event)
          (all-command-keys (list last-input-event))
          (command (key-combo-lookup all-command-keys))
-         (key-combo-undo-list)
-         )
+         (key-combo-undo-list))
     (unless (key-combo-lookup (list last-input-event))
       (error "invalid call"))
     (if (eq 'self-insert-command
-            (key-combo-lookup-original
-             (key-description (list last-input-event))))
+            (key-combo-lookup-original last-input-event))
         (progn
-          (key-combo-command-execute
-           '(self-insert-command . delete-backward-char))
+          (key-combo-command-execute 'self-insert-command)
           (key-combo-undo)))
     (key-combo-set-start-position (cons (point) (window-start)))
     ;;for undo
@@ -215,6 +205,14 @@
     );;end let
   );;end key-combo
 
+(defun key-combo-smart-insert(string)
+  (insert string)
+  (if (eq ?  (aref string 0))
+      (save-excursion
+        (key-combo-return)
+        (just-one-space)))
+  )
+
 (defun key-combo-get-command(command)
   (unless (key-combo-elementp command)
     (error "%s is not command" command))
@@ -225,44 +223,25 @@
    ((string-match "`!!'" command)
     (destructuring-bind (pre post) (split-string command "`!!'")
       (lexical-let ((pre pre) (post post))
-        (cons
          (lambda()
-           (insert pre)
-           (if (eq ?  (aref pre 0))
-               (save-excursion
-                 (key-combo-return)
-                 (just-one-space)))
-           (save-excursion (insert post)))
-         (lambda()
-           (delete-backward-char (length pre))
-           (delete-backward-char (- (length post)))))
-        )))
+           (key-combo-smart-insert pre)
+           (save-excursion (insert post))))
+        ))
    (t
     (lexical-let ((command command))
-      (cons
        (lambda()
-         (insert command)
-         (if (eq ?  (aref command 0))
-             (save-excursion
-               (key-combo-return)
-               (just-one-space))))
-       (lambda()
-         (delete-backward-char (length command))))))
+         (key-combo-smart-insert command)
+       )))
    );;end cond
   )
 
 (defun key-combo-elementp (element)
-  (or (or (functionp element)
-          (stringp element)
-          (null element))
-      (and (or (functionp (car-safe element))
-               (stringp (car-safe element)))
-           (or (functionp (cdr-safe element))
-                (stringp (cdr-safe element))
-                (null (cdr-safe element))
-                ))))
+  (or (functionp element)
+      (stringp element)
+      (null element));;for unset
+      )
 
-(defun key-combo-define (keymap keys commands)
+(defun key-combo-define-seq (keymap keys commands)
   "Define in KEYMAP, a key-combo of two keys in KEYS starting a COMMAND.
 \nKEYS can be a string or a vector of two elements. Currently only elements
 that corresponds to ascii codes in the range 32 to 126 can be used.
@@ -271,19 +250,19 @@ If COMMAND is nil, the key-combo is removed."
   ;;copy from key-chord-define
   (cond
    ;;for sequence '(" = " " == ")
-   ((not (key-combo-elementp commands))
+   ((and (not (key-combo-elementp commands))
+         (consp (cdr-safe commands)))
     (let ((base-key keys)
           (seq-keys keys))
       (mapc '(lambda(command)
-               (key-combo-define1 keymap seq-keys command)
+               (key-combo-define keymap seq-keys command)
                (setq seq-keys (concat seq-keys base-key)))
             commands)))
    (t
-    (key-combo-define1 keymap keys commands))
+    (key-combo-define keymap keys commands))
    ))
 
-;;(key-combo-define-global (kbd ">") '(">"))
-(defun key-combo-define1 (keymap keys command)
+(defun key-combo-define (keymap keys command)
   ;;copy from key-chord-define
   (unless (key-combo-elementp command)
     (error "%s is not command" command))
@@ -308,7 +287,7 @@ that corresponds to ascii codes in the range 32 to 126 can be used.
 \nCOMMAND can be an interactive function, a string, or nil.
 If COMMAND is nil, the key-combo is removed."
   ;;(interactive "sSet key chord globally (2 keys): \nCSet chord \"%s\" to command: ")
-  (key-combo-define key-combo-mode-map keys command))
+  (key-combo-define-seq key-combo-mode-map keys command))
 
 (defvar key-combo-default-alist
   '(("=" . (" = " " == " " === " ))
@@ -320,6 +299,7 @@ If COMMAND is nil, the key-combo is removed."
     ))
 
 (defun key-combo-unload-default ()
+  (interactive)
   (key-combo-load-default-1
    key-combo-mode-map
    (mapcar (lambda(x)
@@ -328,6 +308,7 @@ If COMMAND is nil, the key-combo is removed."
            key-combo-default-alist)))
 
 (defun key-combo-load-default ()
+  (interactive)
   (key-combo-mode 1)
   (key-combo-load-default-1 key-combo-mode-map key-combo-default-alist)
   )
@@ -346,46 +327,11 @@ If COMMAND is nil, the key-combo is removed."
 
 (defun key-combo-load-default-1 (map keys)
  (dolist (key keys)
-   (key-combo-define map (read-kbd-macro (car key))(cdr key)))
+   (key-combo-define-seq map (read-kbd-macro (car key))(cdr key)))
   ;; ;; (key-combo-define map (kbd "=~") " =~ ")
   ;; ;; (key-combo-define map (kbd "(=") "(=`!!')")
   ;; ;; (key-combo-define map (kbd "<<") " << ")
   )
-
-;;ok
-;;(key-combo-define-global (kbd "=") '(" = " " == " "="))
-;;(key-combo-define-global (kbd "(=") "(=`!!')")
-;;ok
-;;(key-combo-define-global (kbd "(") 'skeleton-pair-insert-maybe)
-;;ok
-;;(key-combo-define-global (kbd "=>") " => ")
-;;(key-combo-define-global (kbd "=") '(" = " " == " "="))
-;;ok
-;;(key-combo-define-global (kbd "=") " = ")
-;;ok
-;;(global-set-key (kbd "=") 'key-combo)
-;;ok
-;;(key-combo-define-global (kbd "=") '(" = " " == " "="))
-;;(key-combo-define-global (kbd "=>") " => ")
-;;ng
-;;(global-set-key (kbd "==") 'key-combo) => ng
-;;ok
-;;(key-combo-define-global (kbd "=>") " => ")
-;;(key-combo-define-global (kbd "=") '(" = " " == " "="))
-;;(key-combo-define-global (kbd ">") '(" > " " >> " ))
-;;(key-combo-define-global (kbd "->") " -> ")
-;;ok
-;;(key-combo-define-global (kbd "=") " = ")
-;;(key-combo-define-global (kbd "==") " == ")
-;;(key-combo-define-global (kbd "===") "=")
-
-
-;;skeleton(())後ろがかっこの場合囲む
-
-;;clean up
-;;(key-combo-define-global (kbd "=") '(nil nil nil))
-;;(key-combo-define-global (kbd "-") '(nil nil))
-;;(global-set-key(kbd "-") 'self-insert-command)
 
 (defun test()
   (if (y-or-n-p "?")
@@ -508,46 +454,50 @@ If COMMAND is nil, the key-combo is removed."
       (expect "a"
         (with-temp-buffer
           (buffer-enable-undo)
-          (key-combo-command-execute '((lambda() (insert "a")) . nil))
+          (key-combo-command-execute (lambda() (insert "a")))
           (buffer-string)
           ))
       (expect (error)
         (with-temp-buffer
           (buffer-enable-undo)
-          (key-combo-command-execute '(wrong-command . nil))
+          (key-combo-command-execute 'wrong-command)
           (buffer-string)
           ))
       (expect "b"
         (with-temp-buffer
           (buffer-enable-undo)
           (let ((last-command-event ?b))
-            (key-combo-command-execute '(self-insert-command . nil)))
+            (key-combo-command-execute 'self-insert-command))
           (buffer-string)
           ))
       (desc "key-combo-get-command")
       (expect "a"
         (with-temp-buffer
-          (funcall (car (key-combo-get-command "a")))
+          (funcall (key-combo-get-command "a"))
           (buffer-string)
           ))
-      (expect ""
-        (with-temp-buffer
-          (funcall (car (key-combo-get-command "a")))
-          (funcall (cdr (key-combo-get-command "a")))
-          (buffer-string)
-          ))
+      ;; (expect ""
+      ;;   (with-temp-buffer
+      ;;     (buffer-enable-undo)
+      ;;     (funcall (key-combo-get-command "a"))
+      ;;     (key-combo-undo)
+      ;;     ;;(funcall (cdr (key-combo-get-command "a")))
+      ;;     (buffer-string)
+      ;;     ))
       (expect t
         (with-temp-buffer
-          (funcall (car (key-combo-get-command "a`!!'a")))
+          (funcall (key-combo-get-command "a`!!'a"))
           (buffer-string)
           (and (equal (buffer-string) "aa") (eq (point) 2))
           ))
-      (expect ""
-        (with-temp-buffer
-          (funcall (car (key-combo-get-command "a`!!'a")))
-          (funcall (cdr (key-combo-get-command "a`!!'a")))
-          (buffer-string)
-          ))
+      ;; (expect ""
+      ;;   (with-temp-buffer
+      ;;     (buffer-enable-undo)
+      ;;     (funcall (key-combo-get-command "a`!!'a"))
+      ;;     (key-combo-undo)
+      ;;     ;;(funcall (key-combo-get-command "a`!!'a"))
+      ;;     (buffer-string)
+      ;;     ))
       (desc "key-combo-define")
       (expect (error)
         (key-combo-define-global "a" 'wrong-command))
@@ -567,7 +517,7 @@ If COMMAND is nil, the key-combo is removed."
       (expect (mock (define-key * * *) :times 2);;(not-called define-key)
         ;;(mock   (define-key * * *) :times 0);;=> nil
         (stub key-combo-lookup-key =>'key-combo)
-        (key-combo-define key-combo-mode-map "a" '("a" "bb"))
+        (key-combo-define-seq key-combo-mode-map "a" '("a" "bb"))
         )
       (desc "undo")
       (expect "="
@@ -611,27 +561,27 @@ If COMMAND is nil, the key-combo is removed."
       (expect " = "
         (with-temp-buffer
           (funcall
-           (car (key-combo-lookup-key
-                 (vector 'key-combo (intern (key-description "="))))))
+           (key-combo-lookup-key
+                 (vector 'key-combo (intern (key-description "=")))))
           (buffer-string)
           ))
       (expect " == "
         (with-temp-buffer
           (funcall
-           (car (key-combo-lookup-key
-                 (vector 'key-combo (intern (key-description "=="))))))
+           (key-combo-lookup-key
+                 (vector 'key-combo (intern (key-description "==")))))
           (buffer-string)))
       (expect " => "
         (with-temp-buffer
           (funcall
-           (car (key-combo-lookup-key
-                 (vector 'key-combo (intern (key-description "=>"))))))
+           (key-combo-lookup-key
+                 (vector 'key-combo (intern (key-description "=>")))))
           (buffer-string)))
       (expect " === "
         (with-temp-buffer
           (funcall
-           (car (key-combo-lookup-key
-                 (vector 'key-combo (intern (key-description "==="))))))
+           (key-combo-lookup-key
+                 (vector 'key-combo (intern (key-description "===")))))
           (buffer-string)))
       (expect nil
         (key-combo-lookup-key
@@ -648,102 +598,83 @@ If COMMAND is nil, the key-combo is removed."
       (expect " = "
         (with-temp-buffer
           (funcall
-           (car (key-combo-lookup "=")))
+           (key-combo-lookup "="))
           (buffer-string)))
       (expect " == "
         (with-temp-buffer
           (funcall
-           (car (key-combo-lookup "==")))
+           (key-combo-lookup "=="))
           (buffer-string)))
       (expect " == "
         (with-temp-buffer
           (key-combo-define-global (kbd "C-M-h") " == ")
           (funcall
-           (car (key-combo-lookup (kbd "C-M-h"))))
+           (key-combo-lookup (kbd "C-M-h")))
           (buffer-string)))
       (expect " === "
         (with-temp-buffer
           (key-combo-define-global (kbd "C-M-h C-M-h") " === ")
           (funcall
-           (car (key-combo-lookup (kbd "C-M-h C-M-h"))))
+           (key-combo-lookup (kbd "C-M-h C-M-h")))
           (buffer-string)))
       (expect " = "
         (with-temp-buffer
           (funcall
-           (car (key-combo-lookup [?=])))
+           (key-combo-lookup [?=]))
           (buffer-string)))
       (expect " == "
         (with-temp-buffer
           (funcall
-           (car (key-combo-lookup [?= ?=])))
+           (key-combo-lookup [?= ?=]))
           (buffer-string)))
       (expect " => "
         (with-temp-buffer
           (funcall
-           (car (key-combo-lookup [?= ?>])))
+           (key-combo-lookup [?= ?>]))
           (buffer-string)))
       (expect " === "
         (with-temp-buffer
           (funcall
-           (car (key-combo-lookup [?= ?= ?=])))
+           (key-combo-lookup [?= ?= ?=]))
           (buffer-string)))
       (expect nil
         (key-combo-lookup [?= ?= ?= ?=]))
+      (desc "key-combo-lookup-original")
+      (expect 'self-insert-command
+        (key-combo-lookup-original (key-description (list ?b))))
+      (expect 'self-insert-command
+        (key-combo-lookup-original "b"))
+      (expect 'self-insert-command
+        (key-combo-lookup-original (key-description (list ?=))))
+      (expect 'self-insert-command
+        (key-combo-lookup-original "b"))
       (desc "key-combo-elementp")
       (expect t
         (every 'null
-               ;;(identity
+        ;;(identity
                (mapcar (lambda(command)
                          (progn (key-combo-define-global ">>" command)
-                                (null (key-combo-lookup ">"))))
-                       '((">" . ">")
-                         (">" . (lambda() ()))
-                         ((lambda() ()) . ">")
-                         (lambda()())
-                         ((lambda() ()) . (lambda() ()))
+                                (null (key-combo-lookup ">>"))))
+                       '((lambda()())
                          ">"
-                         ((lambda()()) . nil)
-                         ((lambda()()))
-                         (">" . nil)
-                         (">")
-                         (self-insert-command . delete-backward-char)
                          self-insert-command
-                         (self-insert-command . nil)
-                         (self-insert-command)
                          ))))
       (expect t
         (every 'identity
                (mapcar (lambda(x) (key-combo-elementp x))
-                       '((">" . ">")
-                         (">" . (lambda() ()))
-                         ((lambda() ()) . ">")
-                         (lambda()())
-                         ((lambda() ()) . (lambda() ()))
+                       '((lambda()())
                          ">"
                          nil
-                         ((lambda()()) . nil)
-                         ((lambda()()))
-                         (">" . nil)
-                         (">")
-                         (self-insert-command . delete-backward-char)
                          self-insert-command
-                         (self-insert-command . nil)
-                         (self-insert-command)
                          ))))
       (expect t
         (every 'null
                (mapcar (lambda(x) (key-combo-elementp x))
-                       '(((">" . ">"))
-                         ((">" . (lambda() ())))
-                         (((lambda()()) . ">"))
-                         (((lambda()()) . (lambda() ())))
+                       '(((">"))
+                         (((lambda()())))
                          (nil)
-                         ((self-insert-command . delete-backward-char))
-                         ((nil . self-insert-command))
-                         (wrong-command . wrong-command)
-                         (wrong-command . nil)
-                         (nil . wrong-command)
-                         (nil . self-insert-command)
+                         ((self-insert-command))
+                         (wrong-command)
                          ))))
       (expect t
         (every 'null
