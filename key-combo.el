@@ -111,10 +111,10 @@
       (key-combo-mode 1))))
 
 (defun key-combo-undo ()
-  (let ((buffer-undo-list))
-    (primitive-undo (1+ (key-combo-count-boundary key-combo-undo-list))
-                    key-combo-undo-list)
-    (if (boundp 'key-combo-undo-list)
+  (if (boundp 'key-combo-undo-list)
+      (let ((buffer-undo-list))
+        (primitive-undo (1+ (key-combo-count-boundary key-combo-undo-list))
+                        key-combo-undo-list)
         (setq key-combo-undo-list
               (append buffer-undo-list key-combo-undo-list)))))
 
@@ -392,34 +392,6 @@ If COMMAND is nil, the key-combo is removed."
           (call-interactively 'key-combo)
           (char-to-string(following-char))
           ))
-      (desc "key-combo-undo")
-      ;; (expect ""
-      ;;   (with-temp-buffer
-      ;;     (buffer-enable-undo)
-      ;;     (key-combo-undo '((lambda() (insert "a")) . nil))
-      ;;     (buffer-string)
-      ;;     ))
-      ;; (expect "a"
-      ;;   (with-temp-buffer
-      ;;     (buffer-enable-undo)
-      ;;     (key-combo-undo
-      ;;      '((lambda() (insert "a")) . (lambda() (insert "a"))))
-      ;;     (buffer-string)
-      ;;     ))
-      ;; (expect "b"
-      ;;   (with-temp-buffer
-      ;;     (buffer-enable-undo)
-      ;;     (let ((last-command-event ?b))
-      ;;       (key-combo-undo
-      ;;        '((lambda() (insert "a")) . self-insert-command)))
-      ;;     (buffer-string)
-      ;;     ))
-      ;; (expect (error)
-      ;;   (with-temp-buffer
-      ;;     (buffer-enable-undo)
-      ;;     (key-combo-undo '((lambda() (insert "a")) . wrong-command))
-      ;;     (buffer-string)
-      ;;     ))
       (desc "key-combo-command-execute")
       (expect "a"
         (with-temp-buffer
@@ -446,28 +418,31 @@ If COMMAND is nil, the key-combo is removed."
           (funcall (key-combo-get-command "a"))
           (buffer-string)
           ))
-      ;; (expect ""
-      ;;   (with-temp-buffer
-      ;;     (buffer-enable-undo)
-      ;;     (funcall (key-combo-get-command "a"))
-      ;;     (key-combo-undo)
-      ;;     ;;(funcall (cdr (key-combo-get-command "a")))
-      ;;     (buffer-string)
-      ;;     ))
       (expect t
         (with-temp-buffer
           (funcall (key-combo-get-command "a`!!'a"))
           (buffer-string)
           (and (equal (buffer-string) "aa") (eq (point) 2))
           ))
-      ;; (expect ""
-      ;;   (with-temp-buffer
-      ;;     (buffer-enable-undo)
-      ;;     (funcall (key-combo-get-command "a`!!'a"))
-      ;;     (key-combo-undo)
-      ;;     ;;(funcall (key-combo-get-command "a`!!'a"))
-      ;;     (buffer-string)
-      ;;     ))
+      (desc "key-combo-undo")
+      (expect ""
+        (with-temp-buffer
+          (buffer-enable-undo)
+          (let((key-combo-undo-list))
+            (key-combo-command-execute (lambda() (insert "a")))
+            (key-combo-undo)
+            )
+          (buffer-string)
+          ))
+      (expect ""
+        (with-temp-buffer
+          (buffer-enable-undo)
+          (let((key-combo-undo-list))
+            (key-combo-command-execute (key-combo-get-command "a`!!'a"))
+            (key-combo-undo)
+            )
+          (buffer-string)
+          ))
       (desc "key-combo-define")
       (expect (error)
         (key-combo-define-global "a" 'wrong-command))
