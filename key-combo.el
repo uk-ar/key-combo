@@ -82,7 +82,7 @@
 ;; * Initial revision
 
 ;; Code goes here
-(eval-when-compile (require 'cl))
+(require 'cl)
 
 (defvar key-combo-loop-option 'only-same-key;'allways 'only-same-key 'never
   "Loop mode setting.
@@ -137,8 +137,9 @@
   (let ((buffer-undo-list))
     (primitive-undo (1+ (key-combo-count-boundary key-combo-undo-list))
                     key-combo-undo-list)
-    (setq key-combo-undo-list (append buffer-undo-list key-combo-undo-list))
-    ))
+    (if (boundp 'key-combo-undo-list)
+        (setq key-combo-undo-list
+              (append buffer-undo-list key-combo-undo-list)))))
 
 (defun key-combo-command-execute (command)
   (let ((buffer-undo-list))
@@ -151,17 +152,11 @@
     (undo-boundary)
     (if (boundp 'key-combo-undo-list)
         (setq key-combo-undo-list
-              (append buffer-undo-list key-combo-undo-list)))
-    )
-  )
+              (append buffer-undo-list key-combo-undo-list)))))
 
 ;;(browse-url "http://q.hatena.ne.jp/1226571494")
 (defun key-combo-count-boundary (last-undo-list)
-  (let ((count 0))
-    (while (not (eq last-undo-list nil))
-      (if (null (car last-undo-list)) (setq count (1+ count)))
-      (setq last-undo-list (cdr last-undo-list)))
-    count))
+  (length (remove-if-not 'null last-undo-list)))
 
 ;;(key-combo-lookup-original ?=)
 (defun key-combo (arg)
