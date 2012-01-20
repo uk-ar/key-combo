@@ -211,7 +211,7 @@
       (null element));;for unset
       )
 
-(defun key-combo-define-seq (keymap keys commands)
+(defun key-combo-define (keymap keys commands)
   "Define in KEYMAP, a key-combo of two keys in KEYS starting a COMMAND.
 \nKEYS can be a string or a vector of two elements. Currently only elements
 that corresponds to ascii codes in the range 32 to 126 can be used.
@@ -221,18 +221,18 @@ If COMMAND is nil, the key-combo is removed."
   (cond
    ;;for sequence '(" = " " == ")
    ((and (not (key-combo-elementp commands))
-         (consp (cdr-safe commands)))
+         (key-combo-elementp (car-safe commands)))
     (let ((base-key keys)
           (seq-keys keys))
       (mapc '(lambda(command)
-               (key-combo-define keymap seq-keys command)
+               (key-combo-define1 keymap seq-keys command)
                (setq seq-keys (concat seq-keys base-key)))
             commands)))
    (t
-    (key-combo-define keymap keys commands))
+    (key-combo-define1 keymap keys commands))
    ))
 
-(defun key-combo-define (keymap keys command)
+(defun key-combo-define1 (keymap keys command)
   ;;copy from key-chord-define
   (unless (key-combo-elementp command)
     (error "%s is not command" command))
@@ -257,7 +257,7 @@ that corresponds to ascii codes in the range 32 to 126 can be used.
 \nCOMMAND can be an interactive function, a string, or nil.
 If COMMAND is nil, the key-combo is removed."
   ;;(interactive "sSet key chord globally (2 keys): \nCSet chord \"%s\" to command: ")
-  (key-combo-define-seq key-combo-mode-map keys command))
+  (key-combo-define key-combo-mode-map keys command))
 
 (defvar key-combo-default-alist
   '(("=" . (" = " " == " " === " ))
@@ -297,7 +297,7 @@ If COMMAND is nil, the key-combo is removed."
 
 (defun key-combo-load-default-1 (map keys)
  (dolist (key keys)
-   (key-combo-define-seq map (read-kbd-macro (car key))(cdr key)))
+   (key-combo-define map (read-kbd-macro (car key))(cdr key)))
   ;; ;; (key-combo-define map (kbd "=~") " =~ ")
   ;; ;; (key-combo-define map (kbd "(=") "(=`!!')")
   ;; ;; (key-combo-define map (kbd "<<") " << ")
@@ -487,7 +487,7 @@ If COMMAND is nil, the key-combo is removed."
       (expect (mock (define-key * * *) :times 2);;(not-called define-key)
         ;;(mock   (define-key * * *) :times 0);;=> nil
         (stub key-binding =>'key-combo)
-        (key-combo-define-seq key-combo-mode-map "a" '("a" "bb"))
+        (key-combo-define key-combo-mode-map "a" '("a" "bb"))
         )
       (desc "undo")
       (expect "="
@@ -587,14 +587,25 @@ If COMMAND is nil, the key-combo is removed."
         (key-combo-lookup-original ?=))
       (desc "key-combo-elementp")
       (expect t
-        (every 'null
+        (every 'identity
         ;;(identity
                (mapcar (lambda(command)
                          (progn (key-combo-define-global ">>" command)
-                                (null (key-combo-lookup ">>"))))
+                                (identity (key-combo-lookup ">>"))))
                        '((lambda()())
                          ">"
+                         ;;nil
                          self-insert-command
+                         ((lambda()()))
+                         (">")
+                         (self-insert-command)
+                         (">" ">")
+                         (">" (lambda()()))
+                         ((lambda()()) ">")
+                         ((lambda()()) (lambda()()))
+                         (">" self-insert-command)
+                         (self-insert-command ">")
+                         (self-insert-command self-insert-command)
                          ))))
       (expect t
         (every 'identity
@@ -607,52 +618,12 @@ If COMMAND is nil, the key-combo is removed."
       (expect t
         (every 'null
                (mapcar (lambda(x) (key-combo-elementp x))
-                       '(((">"))
-                         (((lambda()())))
+                       '((">")
+                         ((lambda()()))
                          (nil)
-                         ((self-insert-command))
-                         (wrong-command)
+                         (self-insert-command)
+                         wrong-command
                          ))))
-      (expect t
-        (every 'null
-               (mapcar (lambda(x) (key-combo-elementp x))
-                       '((">" ">")
-                         (">" (lambda()()))
-                         ((lambda()()) ">")
-                         ((lambda()()) ((lambda()())))
-                         (((lambda()()) ">") ">")
-                         ((">" (lambda()())) ">")
-                         (">"                ((lambda()())">"))
-                         (">"                (">" (lambda()())))
-                         ((lambda()())     ((lambda()()) ">"))
-                         (((lambda()()) ">") (lambda()()))
-                         ((lambda()())     (">" (lambda()())))
-                         ((">" (lambda()())) (lambda()()))
-                         (">" self-insert-command)
-                         (self-insert-command ">")
-                         (self-insert-command (self-insert-command))
-                         ((self-insert-command ">") ">")
-                         ((">" self-insert-command) ">")
-                         (">"                (self-insert-command">"))
-                         (">"                (">" self-insert-command))
-                         (self-insert-command     (self-insert-command ">"))
-                         ((self-insert-command ">") self-insert-command)
-                         (self-insert-command     (">" self-insert-command))
-                         ((">" self-insert-command)  self-insert-command)))))
-      ;; (desc "vertically")
-      ;; (expect (mock (split-window-vertically 10))
-      ;;         (stub y-or-n-p  => nil)
-      ;;         (test))
-      ;; (desc "horizontally")
-      ;; (expect (mock (split-window-horizontally *))
-      ;;         (stub y-or-n-p  => t)
-      ;;         (test))
-      ;; (desc "return")
-      ;; (expect 1
-      ;;         (stub y-or-n-p)
-      ;;         (stub split-window-horizontally)
-      ;;         (stub split-window-vertically)
-      ;;         (test))
       )))
 
 ;;;###autoload
