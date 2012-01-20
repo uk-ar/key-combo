@@ -90,38 +90,16 @@
 \n'only-same-key:do loop only same key sequence.
 \n'never:don't loop.")
 
-(defun key-combo-lookup-key1 (keymap key)
-  ;; copy from key-chord-lookup-key
-  "Like lookup-key but no third arg and no numeric return value."
-  (let ((res (lookup-key keymap key)))
-    (if (numberp res)
-        nil
-      ;; else
-      res)))
-
 (defun key-combo-describe ()
   "List key combo bindings in a help buffer."
   (interactive)
   (describe-bindings [key-combo]))
 
-(defun key-combo-lookup-key (key)
-  ;; copy from key-chord-lookup-key
-  "Lookup KEY in all current key maps."
-  (let ((maps (current-minor-mode-maps))
-        res)
-    (while (and maps (not res))
-      (setq res (key-combo-lookup-key1 (car maps) key)
-            maps (cdr maps)))
-    (or res
-        (if (current-local-map)
-            (key-combo-lookup-key1 (current-local-map) key))
-        (key-combo-lookup-key1 (current-global-map) key))))
-
 (defun key-combo-lookup (events)
   (let ((key (if (characterp events)
                  (single-key-description events)
                (key-description events))));;for vector
-    (key-combo-lookup-key (vector 'key-combo (intern key)))))
+  (key-binding (vector 'key-combo (intern key)))))
 
 (defun key-combo-lookup-original (events)
   (let ((key (if (characterp events)
@@ -129,9 +107,8 @@
                (key-description events))));;for vector
     (prog2
         (key-combo-mode -1)
-        (key-combo-lookup-key key)
-      (key-combo-mode 1)
-      )))
+        (key-binding key)
+      (key-combo-mode 1))))
 
 (defun key-combo-undo ()
   (let ((buffer-undo-list))
@@ -146,9 +123,7 @@
     (cond
      ((commandp command)
       (call-interactively command))
-     ((functionp command)
-      (funcall command))
-     (t (error "%s is not command" (car command))))
+     (t (funcall command)))
     (undo-boundary)
     (if (boundp 'key-combo-undo-list)
         (setq key-combo-undo-list
@@ -158,20 +133,20 @@
 (defun key-combo-count-boundary (last-undo-list)
   (length (remove-if-not 'null last-undo-list)))
 
-;;(key-combo-lookup-original ?=)
 (defun key-combo (arg)
   (interactive "P")
+  (unless (key-combo-lookup last-input-event)
+    (error "invalid call"))
   (let* ((same-key last-input-event)
          (all-command-keys (list last-input-event))
          (command (key-combo-lookup all-command-keys))
          (key-combo-undo-list))
-    (unless (key-combo-lookup (list last-input-event))
-      (error "invalid call"))
     (if (eq 'self-insert-command
             (key-combo-lookup-original last-input-event))
         (progn
           (key-combo-command-execute 'self-insert-command)
-          (key-combo-undo)))
+          ;; undo in first loop
+          ))
     (key-combo-set-start-position (cons (point) (window-start)))
     ;;for undo
     (catch 'invalid-event
@@ -265,7 +240,7 @@ If COMMAND is nil, the key-combo is removed."
            (null (cdr-safe command)))
       (setq command (car-safe command)))
   (let* ((key1 (substring keys 0 1))
-         (command1 (key-combo-lookup-key key1)))
+         (command1 (key-binding key1)))
     (cond ((eq command nil)
            (define-key keymap key1 nil))
           ((not (eq command1 'key-combo))
@@ -501,17 +476,17 @@ If COMMAND is nil, the key-combo is removed."
       (expect (no-error)
         (key-combo-define-global (kbd "C-M-g") 'self-insert-command))
       (expect (mock (define-key * * *) :times 2);;=> nil
-        (stub key-combo-lookup-key => nil)
+        (stub key-binding => nil)
         (key-combo-define key-combo-mode-map "a" "a")
         )
       (expect (mock (define-key * * *) :times 1);;=> nil
         ;;(not-called define-key)
-        (stub key-combo-lookup-key =>'key-combo)
+        (stub key-binding =>'key-combo)
         (key-combo-define key-combo-mode-map "a" "a")
         )
       (expect (mock (define-key * * *) :times 2);;(not-called define-key)
         ;;(mock   (define-key * * *) :times 0);;=> nil
-        (stub key-combo-lookup-key =>'key-combo)
+        (stub key-binding =>'key-combo)
         (key-combo-define-seq key-combo-mode-map "a" '("a" "bb"))
         )
       (desc "undo")
@@ -552,43 +527,6 @@ If COMMAND is nil, the key-combo is removed."
           (call-interactively 'key-combo)
           (buffer-string)
           ))
-      (desc "key-combo-lookup-key")
-      (expect " = "
-        (with-temp-buffer
-          (funcall
-           (key-combo-lookup-key
-                 (vector 'key-combo (intern (key-description "=")))))
-          (buffer-string)
-          ))
-      (expect " == "
-        (with-temp-buffer
-          (funcall
-           (key-combo-lookup-key
-                 (vector 'key-combo (intern (key-description "==")))))
-          (buffer-string)))
-      (expect " => "
-        (with-temp-buffer
-          (funcall
-           (key-combo-lookup-key
-                 (vector 'key-combo (intern (key-description "=>")))))
-          (buffer-string)))
-      (expect " === "
-        (with-temp-buffer
-          (funcall
-           (key-combo-lookup-key
-                 (vector 'key-combo (intern (key-description "===")))))
-          (buffer-string)))
-      (expect nil
-        (key-combo-lookup-key
-         (vector 'key-combo (intern (key-description "====")))))
-      (expect nil
-        (key-combo-lookup-key
-         (vector 'key-combo (intern (key-description "=====")))))
-      (expect 'self-insert-command
-        (prog2
-            (key-combo-mode 0)
-            (key-combo-lookup-key (kbd "="))
-          (key-combo-mode 1)))
       (desc "key-combo-lookup")
       (expect " = "
         (with-temp-buffer
@@ -640,9 +578,13 @@ If COMMAND is nil, the key-combo is removed."
       (expect 'self-insert-command
         (key-combo-lookup-original "b"))
       (expect 'self-insert-command
+        (key-combo-lookup-original ?b))
+      (expect 'self-insert-command
         (key-combo-lookup-original (key-description (list ?=))))
       (expect 'self-insert-command
-        (key-combo-lookup-original "b"))
+        (key-combo-lookup-original "="))
+      (expect 'self-insert-command
+        (key-combo-lookup-original ?=))
       (desc "key-combo-elementp")
       (expect t
         (every 'null
