@@ -83,6 +83,7 @@
 
 ;; Code goes here
 (require 'cl)
+;; for remove-if
 
 (defvar key-combo-loop-option 'only-same-key;'allways 'only-same-key 'never
   "Loop mode setting.
@@ -259,13 +260,26 @@ If COMMAND is nil, the key-combo is removed."
   ;;(interactive "sSet key chord globally (2 keys): \nCSet chord \"%s\" to command: ")
   (key-combo-define key-combo-mode-map keys command))
 
+;; < { [ should map bracket command
+;;(setq key-combo-default-alist
 (defvar key-combo-default-alist
-  '(("=" . (" = " " == " " === " ))
+  '(("=" . (" = " " == " " === " ));;" === " for js
     ("=>" . " => ")
-    (">" . (">"))
+    ;;(">" . (" > " " >> "));;for c
     (">=" . " >= ")
-    ("C-a" . ((back-to-indentation) (beginning-of-line) (lambda () (goto-char (point-min))) (key-combo-return)))
-    ("C-e" . ((end-of-line) (lambda () (goto-char (point-max))) (key-combo-return)))
+    ("C-a" . (back-to-indentation beginning-of-line (lambda () (goto-char (point-min))) key-combo-return))
+    ("C-e" . (end-of-line (lambda () (goto-char (point-max))) key-combo-return))
+    ;; ("+" . (" + " " ++ "))
+    ;; ("+=" . " += ")
+    ;; ("-" . ("-" " - " " -- "));; "-" for lisp symbol
+    ;; ("-=" . " -= ")
+    ;; (";" . (";; " ";;; " "; "));;for lisp
+    ;; ("," . ", ")
+    ;; ("." . " . ");;for lisp
+    ;; ("!=" . " != ")
+    ;; ("&" . (" & " " && "))
+    ;; ("|" . (" | " " || "))
+    ;; ("/" . ("/`!!'/" "/* `!!' */") );;for regex, comment
     ))
 
 (defun key-combo-unload-default ()
