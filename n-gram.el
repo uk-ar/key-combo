@@ -90,11 +90,21 @@
   )
 
 (defun my-memq (a b)
-  (delete-if 'null (mapcar (lambda (x)
-                             (if (memq x b) x nil)
-                             ) a)))
+  (flatten2
+   (delete-if
+    'null
+    (mapcar (lambda (x)
+              (if (memq x b) (list x) nil))
+            a))))
+
 ;; (my-memq '(a b d e) '(a c))
 ;; (my-memq '(d) '(a c))
+;; (my-memq '(nil a) '(nil a))
+;;(my-memq '(a nil) '(nil a b))
+;;(my-memq '(nil) '(a nil b))
+
+;;(memq nil '(a nil b))
+;;(not (my-memq (car x) tmp-list))
 
 (defun my-pp-to-string (string)
   (let((string1 (pp-to-string string)))
@@ -109,7 +119,7 @@
                     (car elements))))
        (if reversep
            (apply 'message "%s<-%s %3.1f%% %d/%d"
-                  (nth 1 elements)
+                  (pp-to-string (symbol-name (nth 1 elements)))
                   (my-pp-to-string
                    (vconcat (nreverse sequence)))
                   (cdr (cdr elements))
@@ -117,14 +127,16 @@
          (apply 'message "%s->%s %3.1f%% %d/%d"
                 (my-pp-to-string
                  (vconcat sequence))
-                (cdr elements)))
+                (pp-to-string (symbol-name (nth 1 elements)))
+                (cdr(cdr elements))))
        ))
    list))
 
 (defun make-element (prefix x)
   (list
    prefix ;;0 pre
-   (pp-to-string (symbol-name (car x)))
+   ;;(pp-to-string (symbol-name (car x)))
+   (car x)
    (if (eq 0 (cdr x)) 0
      (/ (* (cdr x) 100) (gethash prefix my-hash))) ;;2 %
    (cdr x);; 3 n/
@@ -140,7 +152,7 @@
 ;;(setq a 1)
 ;;(append nil a)
 
-(defun n-gram (n &optional reversep)
+(defun n-gram (n &optional reversep skip-symbolp)
   (interactive "nInput n of n-gram: ")
   (let ((tree (make-sparse-keymap))
         (my-hash (make-hash-table :test 'equal))
@@ -176,6 +188,7 @@
     (setq my-list
           (delete-if (lambda (x)
                        (or (< (nth 3 x) 3);;count
+                           (< (nth 2 x) 50);;%
                            ;;(eq ?w (char-syntax (nth 1 x)))
                            )) my-list);;count
           );;filter
@@ -192,15 +205,16 @@
             (delete-if
              'null (mapcar
                     (lambda(x)
-                      (cond
-                       ((and (my-memq (car x) words)
-                             (not (my-memq (car x) tmp-list)))
-                        (setq tmp-list
-                              (append tmp-list (my-memq (car x) words)))
-                        x)
-                       ((and (my-memq (car x) words)) nil)
-                       (t x)
-                       ))
+                      (let ((all (vconcat (car x) (vector (nth 1 x)))))
+                        (cond
+                         ((and (my-memq all words)
+                               (not (my-memq all tmp-list)))
+                          (setq tmp-list
+                                (append tmp-list (my-memq all words)))
+                          (if skip-symbolp nil x))
+                         ((and (my-memq all words)) nil)
+                         (t x)
+                         )))
                     my-list
                     )))
       );;end let
@@ -208,9 +222,14 @@
     (n-gram-print my-list reversep)
     )
   )
+;;(vconcat '[a b] (vector 'c))
 ;;(n-gram 3)
 ;;(n-gram 3 t)
 ;;(n-gram 5)
+;;(n-gram 5 nil t);;symbol-skip
 ;;'((a . b) (d . e) (d . a) (d . c) (d . c) (d . e) (e . c) )
+;;(memq nil '(nil b))
+
+;;(my-memq '(nil a) '(nil a))
 
 ;;(append '(a b) '(c d))
