@@ -117,18 +117,18 @@
      (let ((sequence
             (mapcar (lambda (x) (substring-no-properties(symbol-name x )))
                     (car elements))))
-       (if reversep
-           (apply 'message "%s<-%s %3.1f%% %d/%d"
+       (princ (if reversep
+           (apply 'format "%s<-%s %3.1f%% %d/%d\n"
                   (pp-to-string (symbol-name (nth 1 elements)))
                   (my-pp-to-string
                    (vconcat (nreverse sequence)))
                   (cdr (cdr elements))
                   )
-         (apply 'message "%s->%s %3.1f%% %d/%d"
+         (apply 'format "%s->%s %3.1f%% %d/%d\n"
                 (my-pp-to-string
                  (vconcat sequence))
                 (pp-to-string (symbol-name (nth 1 elements)))
-                (cdr(cdr elements))))
+                (cdr(cdr elements)))))
        ))
    list))
 
@@ -151,9 +151,7 @@
 ;;(substring '[a b c] 0 0)
 ;;(setq a 1)
 ;;(append nil a)
-
-(defun n-gram (n &optional reversep skip-symbolp)
-  (interactive "nInput n of n-gram: ")
+(defun n-gram1 (n &optional reversep skip-symbolp)
   (let ((tree (make-sparse-keymap))
         (my-hash (make-hash-table :test 'equal))
         (my-list nil)
@@ -173,8 +171,8 @@
      (lambda (prefix &rest list)
        (unless (eq prefix nil)
          (let ((pre (if (eq (length prefix) 1) nil
-                        (substring prefix 0
-                                   (1- (length prefix)))))
+                      (substring prefix 0
+                                 (1- (length prefix)))))
                (last (aref prefix (1- (length prefix)))))
            (push (make-element pre (cons last (gethash prefix my-hash)))
                  my-list)
@@ -219,8 +217,18 @@
                     )))
       );;end let
     (setq my-list (nreverse my-list))
-    (n-gram-print my-list reversep)
+    (let((temp-buffer-show-function 'switch-to-buffer))
+      (with-output-to-temp-buffer "*n-gram*"
+        (n-gram-print my-list reversep)
+        )
+      )
     )
+  )
+
+(defun n-gram (n &optional reversep skip-symbolp)
+  (interactive "nInput n of n-gram: ")
+  (run-with-idle-timer 0 nil 'n-gram1 n reversep skip-symbolp)
+  ;;(n-gram1 n reversep skip-symbolp)
   )
 ;;(vconcat '[a b] (vector 'c))
 ;;(n-gram 3)
