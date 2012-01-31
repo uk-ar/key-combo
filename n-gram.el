@@ -75,7 +75,7 @@
                    words)
                   (intern (buffer-substring-no-properties pre (point))))
                  ((and (eq ?\n (char-after pre))
-                       (eq ?  (char-syntax (char-after (1+ pre)))))
+                       (eq ?  (char-syntax (or (char-after (1+ pre)) ?\n ))))
                   (skip-syntax-forward
                    (char-to-string (char-syntax (char-after))))
                   (intern "\n"))
@@ -84,10 +84,10 @@
            list)))
       (if reversep list (nreverse list)))))
 
-(let ((words))
-  (pp-to-string (split-word))
-  ;;(message "%S" (nreverse words))
-  )
+;; (let ((words))
+;;   (pp-to-string (split-word))
+;;   ;;(message "%S" (nreverse words))
+;;   )
 
 (defun my-memq (a b)
   (flatten2
@@ -158,7 +158,6 @@
         (words nil)
         (max-lisp-eval-depth 1000))
     ;;treem
-    ;;(n-gram-internal (split-word) n tree)
     (n-gram-internal (split-word reversep) n tree)
     (traverse-tree
      tree
@@ -241,3 +240,5 @@
 ;;(my-memq '(nil a) '(nil a))
 
 ;;(append '(a b) '(c d))
+(provide 'n-gram)
+;;; n-gram.el ends here

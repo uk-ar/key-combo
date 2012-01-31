@@ -97,19 +97,26 @@
   (describe-bindings [key-combo]))
 
 (defun key-combo-lookup (events)
-  (let ((key (if (characterp events)
-                 (single-key-description events)
-               (key-description events))));;for vector
+  (let ((key ;;string
+         (if (or (vectorp events) (consp events))
+             (key-description events);;for vector
+           (single-key-description events))))
   (key-binding (vector 'key-combo (intern key)))))
 
 (defun key-combo-lookup-original (events)
-  (let ((key (if (characterp events)
-                 (single-key-description events)
-               (key-description events))));;for vector
+  (let ((key ;;string
+         (if (or (vectorp events) (consp events))
+             (key-description events);;for vector
+           (single-key-description events))))
     (prog2
         (key-combo-mode -1)
-        (key-binding key)
+        (key-binding (read-kbd-macro key))
       (key-combo-mode 1))))
+
+(defun key-combo-execute-orignal ()
+  (interactive)
+  (call-interactively (key-combo-lookup-original last-input-event))
+  )
 
 (defun key-combo-undo ()
   (if (boundp 'key-combo-undo-list)
@@ -136,7 +143,7 @@
 
 (defun key-combo (arg)
   (interactive "P")
-  (unless (key-combo-lookup last-input-event)
+  (unless (key-combo-lookup (list last-input-event))
     (error "invalid call"))
   (let* ((same-key last-input-event)
          (all-command-keys (list last-input-event))
@@ -154,7 +161,7 @@
       (while command
         (key-combo-undo)
         (key-combo-command-execute command)
-        (if (not (characterp (read-event))) (throw 'invalid-event t))
+        (read-event)
         (setq same-key
               (cond ((eq key-combo-loop-option 'allways) t)
                     ((eq key-combo-loop-option 'only-same-key)
@@ -166,7 +173,7 @@
         (if (and (not command) same-key);;for loop
             (progn
               (if (eq 2 (length all-command-keys)) (throw 'invalid-event t))
-              (setq all-command-keys (char-to-string last-input-event))
+              (setq all-command-keys (list last-input-event))
               (setq command (key-combo-lookup all-command-keys))))
         );;end while
       );;end catch
@@ -223,11 +230,12 @@ If COMMAND is nil, the key-combo is removed."
    ;;for sequence '(" = " " == ")
    ((and (not (key-combo-elementp commands))
          (key-combo-elementp (car-safe commands)))
-    (let ((base-key keys)
-          (seq-keys keys))
+    (let ((base-key (listify-key-sequence keys))
+          (seq-keys (listify-key-sequence keys)));;list
       (mapc '(lambda(command)
-               (key-combo-define1 keymap seq-keys command)
-               (setq seq-keys (concat seq-keys base-key)))
+               (key-combo-define1 keymap (vconcat seq-keys) command)
+               (setq seq-keys
+                     (append seq-keys base-key)))
             commands)))
    (t
     (key-combo-define1 keymap keys commands))
@@ -269,6 +277,10 @@ If COMMAND is nil, the key-combo is removed."
     (">=" . " >= ")
     ("C-a" . (back-to-indentation beginning-of-line (lambda () (goto-char (point-min))) key-combo-return))
     ("C-e" . (end-of-line (lambda () (goto-char (point-max))) key-combo-return))
+    ("C-M-x" . (key-combo-execute-orignal
+                (lambda ()
+                  (let ((current-prefix-arg '(4)))
+                    (call-interactively 'eval-defun)))))
     ;; ("+" . (" + " " ++ "))
     ;; ("+=" . " += ")
     ;; ("-" . ("-" " - " " -- "));; "-" for lisp symbol
@@ -317,11 +329,14 @@ If COMMAND is nil, the key-combo is removed."
   ;; ;; (key-combo-define map (kbd "<<") " << ")
   )
 
-(defun test()
-  (if (y-or-n-p "?")
-      (split-window-horizontally 20)
-    (split-window-vertically 10))
-  1)
+(defun test1()
+  (interactive)
+  (message "test1")
+  )
+(defun test2()
+  (interactive)
+  (message "test2")
+  )
 (dont-compile
   (when(fboundp 'expectations)
     (expectations
@@ -405,6 +420,32 @@ If COMMAND is nil, the key-combo is removed."
           (backward-char)
           (call-interactively 'key-combo)
           (char-to-string(following-char))
+          ))
+      (expect " === "
+        (with-temp-buffer
+          (key-combo-define-global (kbd "C-M-h C-M-h") " === ")
+          (setq unread-command-events
+                (listify-key-sequence "\C-\M-h\C-\M-h"))
+          (read-event)
+          (call-interactively 'key-combo)
+          (buffer-string)))
+      ;;(mock (edebug-defun) :times 1);;=> nil
+      ;;(mock (expectations-eval-defun) :times 1);;=> nil
+      (expect (mock (test2 *) :times 1);;=> nil
+        (with-temp-buffer
+          (key-combo-define-global (kbd "C-M-d") '(test1 test2))
+          (setq unread-command-events
+                (listify-key-sequence "\C-\M-d\C-\M-d\C-g"));;\C-\M-x
+          (read-event)
+          (call-interactively 'key-combo)
+          ))
+      (expect (mock (test2 *) :times 1);;=> nil
+        (with-temp-buffer
+          (key-combo-define-global (kbd "C-M-d") '(test1 test2))
+          (setq unread-command-events
+                (listify-key-sequence "\C-\M-d\C-\M-d\C-\M-g\C-g"));;\C-\M-x
+          (read-event)
+          (call-interactively 'key-combo)
           ))
       (desc "key-combo-command-execute")
       (expect "a"
@@ -517,6 +558,38 @@ If COMMAND is nil, the key-combo is removed."
           (buffer-string)
           ))
       (desc "key-combo-lookup")
+      ;;(key-combo-lookup "=");;ok
+      ;;(key-combo-lookup "= =");;ok
+      ;;(key-combo-lookup "==");;ng
+
+      ;;(key-combo-lookup 134217752)
+      ;;(single-key-description 134217752)
+      ;;(key-combo-lookup-original 134217752)
+      ;;(key-combo-lookup '(134217752 134217752))
+      ;;(key-combo-lookup '(134217752))
+
+      ;;(key-combo-lookup '("="))
+      ;;(key-combo-load-default)
+      ;; (listify-key-sequence "a")
+      ;; (listify-key-sequence (kbd "C-M-x"))
+      ;;read-kbd-macro
+      ;; (vconcat (append '(134217752) '(134217752)))
+      ;; (append '(97) '(97))
+      ;;(key-description '[134217752 134217752])
+      ;;(key-description '[97 97])
+      ;;(substring '[134217752 134217752] 0 1)
+
+      ;;(key-combo-lookup-original 134217752)
+      ;;(key-combo-lookup-original "C-M-x")
+
+      ;;(single-key-description "C-M-x")
+      ;;(single-key-description "a")
+      ;;(single-key-description "C-M-x")
+      ;;(key-binding "C-M-x")
+      ;;(key-binding [134217752]);;ok
+      ;;(key-binding '(134217752));;ng
+      ;;(key-binding 134217752);;ng
+      ;;(key-combo-load-default)
       (expect " = "
         (with-temp-buffer
           (funcall
@@ -525,7 +598,7 @@ If COMMAND is nil, the key-combo is removed."
       (expect " == "
         (with-temp-buffer
           (funcall
-           (key-combo-lookup "=="))
+           (key-combo-lookup "= ="))
           (buffer-string)))
       (expect " == "
         (with-temp-buffer
@@ -580,7 +653,7 @@ If COMMAND is nil, the key-combo is removed."
         ;;(identity
                (mapcar (lambda(command)
                          (progn (key-combo-define-global ">>" command)
-                                (identity (key-combo-lookup ">>"))))
+                                (identity (key-combo-lookup "> >"))))
                        '((lambda()())
                          ">"
                          ;;nil
