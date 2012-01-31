@@ -43,9 +43,10 @@
 ;;
 ;; and some chords, for example
 ;;
-;;  (key-combo-define-global (kbd "=") '(" = " " == " " === " ))
-;;  (key-combo-define-global (kbd "=>") " => ")
-;;
+;;  (key-combo-define-global
+;;     (kbd "=") '(" = " " == " " === " ))
+;;  (key-combo-define-global
+;;     (kbd "=>") " => ")
 ;;
 ;; or load default settings
 ;;
@@ -53,6 +54,9 @@
 
 ;;; History:
 
+;; Revision 1.0 2012/01/31 22:03:50
+;; * Change clean-up function to use undo
+;;
 ;; Revision 0.7 2012/01/17 21:25:10
 ;; * Insert white space dwim
 ;;
