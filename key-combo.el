@@ -103,21 +103,11 @@
          (if (or (vectorp events) (consp events))
              (key-description events);;for vector
            (single-key-description events))))
-  (key-binding (vector 'key-combo (intern key)))))
-
-(defun key-combo-lookup-original (events)
-  (let ((key ;;string
-         (if (or (vectorp events) (consp events))
-             (key-description events);;for vector
-           (single-key-description events))))
-    (prog2
-        (key-combo-mode -1)
-        (key-binding (read-kbd-macro key))
-      (key-combo-mode 1))))
+    (key-binding (vector 'key-combo (intern key)))))
 
 (defun key-combo-execute-orignal ()
   (interactive)
-  (call-interactively (key-combo-lookup-original last-input-event))
+  (call-interactively (key-binding (vector last-input-event)))
   )
 
 (defun key-combo-undo ()
@@ -145,14 +135,12 @@
 
 (defun key-combo (arg)
   (interactive "P")
-  (unless (key-combo-lookup (list last-input-event))
-    (error "invalid call"))
   (let* ((same-key last-input-event)
          (all-command-keys (list last-input-event))
          (command (key-combo-lookup all-command-keys))
          (key-combo-undo-list))
     (if (eq 'self-insert-command
-            (key-combo-lookup-original last-input-event))
+            (key-binding (vector last-input-event)))
         (progn
           (key-combo-command-execute 'self-insert-command)
           ;; undo in first loop
@@ -203,15 +191,15 @@
    ((string-match "`!!'" command)
     (destructuring-bind (pre post) (split-string command "`!!'")
       (lexical-let ((pre pre) (post post))
-         (lambda()
-           (key-combo-smart-insert pre)
-           (save-excursion (insert post))))
-        ))
+        (lambda()
+          (key-combo-smart-insert pre)
+          (save-excursion (insert post))))
+      ))
    (t
     (lexical-let ((command command))
-       (lambda()
-         (key-combo-smart-insert command)
-       )))
+      (lambda()
+        (key-combo-smart-insert command)
+        )))
    );;end cond
   )
 
@@ -219,7 +207,7 @@
   (or (functionp element)
       (stringp element)
       (null element));;for unset key
-      )
+  )
 
 (defun key-combo-define (keymap keys commands)
   "Define in KEYMAP, a key-combo of two keys in KEYS starting a COMMAND.
@@ -235,24 +223,18 @@ If COMMAND is nil, the key-combo is removed."
     (let* ((base-key (listify-key-sequence keys))
            (seq-keys base-key));;list
       (mapc '(lambda(command)
-               (key-combo-define1 keymap (vconcat seq-keys) command)
+               (key-combo-define keymap (vconcat seq-keys) command)
                (setq seq-keys
                      (append seq-keys base-key)))
             commands)))
    (t
     (unless (key-combo-elementp commands)
       (error "%s is not command" commands))
-    (key-combo-define1 keymap keys commands)
+    (define-key keymap
+      (vector 'key-combo (intern (key-description keys)))
+      (key-combo-get-command commands))
     )
    ))
-
-(defun key-combo-define1 (keymap keys command)
-  (define-key keymap
-    (vector 'key-combo (intern (key-description keys)))
-    (key-combo-get-command command))
-  )
-
-(defvar key-combo-mode-map (make-sparse-keymap))
 
 (defun key-combo-define-global (keys command)
   "Define a key-combo of two keys in KEYS starting a COMMAND.
@@ -261,14 +243,22 @@ that corresponds to ascii codes in the range 32 to 126 can be used.
 \nCOMMAND can be an interactive function, a string, or nil.
 If COMMAND is nil, the key-combo is removed."
   ;;(interactive "sSet key chord globally (2 keys): \nCSet chord \"%s\" to command: ")
-  (key-combo-define key-combo-mode-map keys command))
+  (key-combo-define (current-global-map) keys command))
+
+(defun key-combo-define-local (keys command)
+  "Define a key-combo of two keys in KEYS starting a COMMAND.
+\nKEYS can be a string or a vector of two elements. Currently only elements
+that corresponds to ascii codes in the range 32 to 126 can be used.
+\nCOMMAND can be an interactive function, a string, or nil.
+If COMMAND is nil, the key-combo is removed."
+  ;;(interactive "sSet key chord globally (2 keys): \nCSet chord \"%s\" to command: ")
+  (key-combo-define (current-local-map) keys command))
 
 ;; < { [ should map bracket command
 ;;(setq key-combo-default-alist
 (defvar key-combo-default-alist
   '(("=" . (" = " " == " " === " ));;" === " for js
     ("=>" . " => ")
-    ;;(">" . (" > " " >> "));;for c
     (">=" . " >= ")
     ("C-a" . (back-to-indentation beginning-of-line (lambda () (goto-char (point-min))) key-combo-return))
     ("C-e" . (end-of-line (lambda () (goto-char (point-max))) key-combo-return))
@@ -276,23 +266,38 @@ If COMMAND is nil, the key-combo is removed."
                 (lambda ()
                   (let ((current-prefix-arg '(4)))
                     (call-interactively 'eval-defun)))))
-    ;; ("+" . (" + " " ++ "))
-    ;; ("+=" . " += ")
-    ;; ("-" . ("-" " - " " -- "));; "-" for lisp symbol
-    ;; ("-=" . " -= ")
-    ;; (";" . (";; " ";;; " "; "));;for lisp
-    ;; ("," . ", ")
-    ;; ("." . " . ");;for lisp
-    ;; ("!=" . " != ")
-    ;; ("&" . (" & " " && "))
-    ;; ("|" . (" | " " || "))
-    ;; ("/" . ("/`!!'/" "/* `!!' */") );;for regex, comment
+    ("," . ", ")
     ))
+
+(defun key-combo-lisp-default ()
+  (key-combo-define-local (kbd ".") " . ")
+  (key-combo-define-local (kbd ";") '(";; " ";;; " "; "))
+  (key-combo-define-local (kbd "=") "= ")
+  ;;(key-combo-define-local (kbd "=>") "=> ")
+  (key-combo-define-local (kbd ">=") ">= ")
+  ;;(key-combo-define-local (kbd "-") 'self-insert-command)
+  ;; ("/" . ("/`!!'/" "/* `!!' */") );;for regex, comment
+  )
+
+(defun key-combo-c-default ()
+  (key-combo-define-local (kbd "+") '(" + " " ++ "))
+  (key-combo-define-local (kbd "+=") " += ")
+  (key-combo-define-local (kbd "-") '(" - " " -- "))
+  (key-combo-define-local (kbd "-=") " -= ")
+  ;; (key-combo-define-local (kbd ">") '(" > " " >> "))
+  (key-combo-define-local (kbd "!=") " != ")
+  (key-combo-define-local (kbd "&") '(" & " " && "))
+  (key-combo-define-local (kbd "|") '(" | " " || "))
+  )
+
+(defun key-combo-html-default ()
+  (key-combo-define-local (kbd ":") ": ")
+  )
 
 (defun key-combo-unload-default ()
   (interactive)
   (key-combo-load-default-1
-   key-combo-mode-map
+   (current-global-map)
    (mapcar (lambda(x)
              (cons (car x)
                    (make-list (safe-length (cdr-safe x)) nil)))
@@ -301,7 +306,7 @@ If COMMAND is nil, the key-combo is removed."
 (defun key-combo-load-default ()
   (interactive)
   (key-combo-mode 1)
-  (key-combo-load-default-1 key-combo-mode-map key-combo-default-alist)
+  (key-combo-load-default-1 (current-global-map) key-combo-default-alist)
   )
 
 ;;(declare-function key-combo-return "")
@@ -317,11 +322,25 @@ If COMMAND is nil, the key-combo is removed."
   )
 
 (defun key-combo-load-default-1 (map keys)
- (dolist (key keys)
-   (key-combo-define map (read-kbd-macro (car key))(cdr key)))
-  ;; ;; (key-combo-define map (kbd "=~") " =~ ")
-  ;; ;; (key-combo-define map (kbd "(=") "(=`!!')")
-  ;; ;; (key-combo-define map (kbd "<<") " << ")
+  (dolist (key keys)
+    (key-combo-define map (read-kbd-macro (car key))(cdr key)))
+  (add-hook 'emacs-lisp-mode-hook 'key-combo-lisp-default)
+  (add-hook 'c-mode-common-hook 'key-combo-c-default)
+  (add-hook
+   'org-mode-hook
+   (lambda ()
+     (key-combo-define-local (kbd "C-a")
+                             (org-beginning-of-line
+                              (lambda () (goto-char (point-min)))
+                              key-combo-return));;back-to-indentation
+     (key-combo-define-local (kbd "C-e")
+                             '(org-end-of-line
+                               (lambda () (goto-char (point-max)))
+                               key-combo-return))
+     ))
+  ;; (key-combo-define map (kbd "=~") " =~ ")
+  ;; (key-combo-define map (kbd "(=") "(=`!!')")
+  ;; (key-combo-define map (kbd "<<") " << ")
   )
 
 (defun test1()
@@ -504,17 +523,17 @@ If COMMAND is nil, the key-combo is removed."
         (key-combo-define-global (kbd "C-M-g") 'self-insert-command))
       (expect (mock (define-key * * *) :times 1);;=> nil
         (stub key-binding => nil)
-        (key-combo-define key-combo-mode-map "a" "a")
+        (key-combo-define-local "a" "a")
         )
       (expect (mock (define-key * * *) :times 1);;=> nil
         ;;(not-called define-key)
         (stub key-binding =>'key-combo)
-        (key-combo-define key-combo-mode-map "a" '("a"))
+        (key-combo-define-local "a" '("a"))
         )
       (expect (mock (define-key * * *) :times 2);;(not-called define-key)
         ;;(mock   (define-key * * *) :times 0);;=> nil
         (stub key-binding =>'key-combo)
-        (key-combo-define key-combo-mode-map "a" '("a" "bb"))
+        (key-combo-define-local "a" '("a" "bb"))
         )
       (desc "undo")
       (expect "="
@@ -647,7 +666,7 @@ If COMMAND is nil, the key-combo is removed."
       (desc "key-combo-elementp")
       (expect t
         (every 'identity
-        ;;(identity
+               ;;(identity
                (mapcar (lambda(command)
                          (progn (key-combo-define-global ">>" command)
                                 (identity (key-combo-lookup "> >"))))
@@ -690,8 +709,8 @@ If COMMAND is nil, the key-combo is removed."
   (if (key-combo-lookup (this-command-keys-vector))
       ;;(progn (message "pre")
       (setq this-command 'key-combo)
-      ;;)
-))
+    ;;)
+    ))
 
 ;;;###autoload
 (define-minor-mode key-combo-mode
