@@ -43,10 +43,8 @@
 ;;
 ;; and some chords, for example
 ;;
-;;  (key-combo-define-global
-;;     (kbd "=") '(" = " " == " " === " ))
-;;  (key-combo-define-global
-;;     (kbd "=>") " => ")
+;;  (key-combo-define-global (kbd "=") '(" = " " == " " === " ))
+;;  (key-combo-define-global (kbd "=>") " => ")
 ;;
 ;; or load default settings
 ;;
@@ -220,7 +218,7 @@
 (defun key-combo-elementp (element)
   (or (functionp element)
       (stringp element)
-      (null element));;for unset
+      (null element));;for unset key
       )
 
 (defun key-combo-define (keymap keys commands)
@@ -234,32 +232,25 @@ If COMMAND is nil, the key-combo is removed."
    ;;for sequence '(" = " " == ")
    ((and (not (key-combo-elementp commands))
          (key-combo-elementp (car-safe commands)))
-    (let ((base-key (listify-key-sequence keys))
-          (seq-keys (listify-key-sequence keys)));;list
+    (let* ((base-key (listify-key-sequence keys))
+           (seq-keys base-key));;list
       (mapc '(lambda(command)
                (key-combo-define1 keymap (vconcat seq-keys) command)
                (setq seq-keys
                      (append seq-keys base-key)))
             commands)))
    (t
-    (key-combo-define1 keymap keys commands))
+    (unless (key-combo-elementp commands)
+      (error "%s is not command" commands))
+    (key-combo-define1 keymap keys commands)
+    )
    ))
 
 (defun key-combo-define1 (keymap keys command)
-  ;;copy from key-chord-define
-  (unless (key-combo-elementp command)
-    (error "%s is not command" command))
-  (if (and (stringp (car-safe command));;define-key error for ("a")
-           (null (cdr-safe command)))
-      (setq command (car-safe command)))
-  (let* ((key1 (substring keys 0 1))
-         (command1 (key-binding key1)))
-    (cond ((eq command nil)
-           (define-key keymap key1 nil))
-          ((not (eq command1 'key-combo))
-           (define-key keymap key1 'key-combo))))
-  (define-key keymap (vector 'key-combo (intern (key-description keys)))
-    (key-combo-get-command command)))
+  (define-key keymap
+    (vector 'key-combo (intern (key-description keys)))
+    (key-combo-get-command command))
+  )
 
 (defvar key-combo-mode-map (make-sparse-keymap))
 
@@ -508,15 +499,17 @@ If COMMAND is nil, the key-combo is removed."
       (expect (no-error)
         (key-combo-define-global "a" 'self-insert-command))
       (expect (no-error)
+        (key-combo-define-global "a" nil))
+      (expect (no-error)
         (key-combo-define-global (kbd "C-M-g") 'self-insert-command))
-      (expect (mock (define-key * * *) :times 2);;=> nil
+      (expect (mock (define-key * * *) :times 1);;=> nil
         (stub key-binding => nil)
         (key-combo-define key-combo-mode-map "a" "a")
         )
       (expect (mock (define-key * * *) :times 1);;=> nil
         ;;(not-called define-key)
         (stub key-binding =>'key-combo)
-        (key-combo-define key-combo-mode-map "a" "a")
+        (key-combo-define key-combo-mode-map "a" '("a"))
         )
       (expect (mock (define-key * * *) :times 2);;(not-called define-key)
         ;;(mock   (define-key * * *) :times 0);;=> nil
@@ -664,6 +657,7 @@ If COMMAND is nil, the key-combo is removed."
                          self-insert-command
                          ((lambda()()))
                          (">")
+                         ;;(nil)
                          (self-insert-command)
                          (">" ">")
                          (">" (lambda()()))
@@ -692,11 +686,26 @@ If COMMAND is nil, the key-combo is removed."
                          ))))
       )))
 
+(defun key-combo-pre-command-function ()
+  (if (key-combo-lookup (this-command-keys-vector))
+      ;;(progn (message "pre")
+      (setq this-command 'key-combo)
+      ;;)
+))
+
 ;;;###autoload
 (define-minor-mode key-combo-mode
   "Toggle key combo."
   :global t
-  :lighter " KC")
+  :lighter " KC"
+  :group 'key-combo
+  (if key-combo-mode
+      (add-hook 'pre-command-hook
+                ;;post-self-insert-hook
+                #'key-combo-pre-command-function)
+    (remove-hook 'post-self-insert-hook
+                 #'key-combo-pre-command-function))
+  )
 
 ;;todo filter
 ;; filter for mode
