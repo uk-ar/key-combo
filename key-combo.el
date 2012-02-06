@@ -129,11 +129,18 @@
         (setq key-combo-undo-list
               (append buffer-undo-list key-combo-undo-list)))))
 
+(defun key-combo-comment-or-stringp (&optional pos)
+  (setq pos (or pos (point)))
+  (memq (get-text-property pos 'face)
+        '(font-lock-comment-face font-lock-doc-face
+                                 font-lock-string-face))
+  )
+
 ;;(browse-url "http://q.hatena.ne.jp/1226571494")
 (defun key-combo-count-boundary (last-undo-list)
   (length (remove-if-not 'null last-undo-list)))
 
-(defun key-combo (arg)
+(defun* key-combo (arg)
   (interactive "P")
   (let* ((same-key last-input-event)
          (all-command-keys (list last-input-event))
@@ -143,6 +150,7 @@
             (key-binding (vector last-input-event)))
         (progn
           (key-combo-command-execute 'self-insert-command)
+          (if (key-combo-comment-or-stringp) (return-from key-combo nil))
           ;; undo in first loop
           ))
     (key-combo-set-start-position (cons (point) (window-start)))
