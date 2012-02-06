@@ -365,6 +365,16 @@ If COMMAND is nil, the key-combo is removed."
       ;;     ;;(insert (char-to-string(car unread-command-events)))
       ;;     (buffer-string)
       ;;     ))
+      (expect nil
+        (with-temp-buffer
+          (key-combo-mode -1)
+          (if (memq 'key-combo-pre-command-function pre-command-hook) t nil)
+          ))
+      (expect t
+        (with-temp-buffer
+          (key-combo-mode 1)
+          (if (memq 'key-combo-pre-command-function pre-command-hook) t nil)
+          ))
       (expect " = "
         (with-temp-buffer
           (setq unread-command-events (listify-key-sequence "=\C-a"))
@@ -722,7 +732,7 @@ If COMMAND is nil, the key-combo is removed."
       (add-hook 'pre-command-hook
                 ;;post-self-insert-hook
                 #'key-combo-pre-command-function)
-    (remove-hook 'post-self-insert-hook
+    (remove-hook 'pre-command-hook
                  #'key-combo-pre-command-function))
   )
 
