@@ -338,9 +338,9 @@ If COMMAND is nil, the key-combo is removed."
    'org-mode-hook
    (lambda ()
      (key-combo-define-local (kbd "C-a")
-                             (org-beginning-of-line
-                              (lambda () (goto-char (point-min)))
-                              key-combo-return));;back-to-indentation
+                             '(org-beginning-of-line
+                               (lambda () (goto-char (point-min)))
+                               key-combo-return));;back-to-indentation
      (key-combo-define-local (kbd "C-e")
                              '(org-end-of-line
                                (lambda () (goto-char (point-max)))
@@ -453,14 +453,6 @@ If COMMAND is nil, the key-combo is removed."
           (call-interactively 'key-combo)
           (char-to-string(following-char))
           ))
-      (expect " === "
-        (with-temp-buffer
-          (key-combo-define-global (kbd "C-M-h C-M-h") " === ")
-          (setq unread-command-events
-                (listify-key-sequence "\C-\M-h\C-\M-h"))
-          (read-event)
-          (call-interactively 'key-combo)
-          (buffer-string)))
       ;;(mock (edebug-defun) :times 1);;=> nil
       ;;(mock (expectations-eval-defun) :times 1);;=> nil
       (expect (mock (test2 *) :times 1);;=> nil
@@ -643,6 +635,14 @@ If COMMAND is nil, the key-combo is removed."
       (expect " === "
         (with-temp-buffer
           (key-combo-define-global (kbd "C-M-h C-M-h") " === ")
+          (setq unread-command-events
+                (listify-key-sequence "\C-\M-h\C-\M-h"))
+          (read-event)
+          (call-interactively 'key-combo)
+          (buffer-string)))
+      (expect " === "
+        (with-temp-buffer
+          (key-combo-define-global (kbd "C-M-h C-M-h") " === ")
           (funcall
            (key-combo-lookup (kbd "C-M-h C-M-h")))
           (buffer-string)))
@@ -668,19 +668,6 @@ If COMMAND is nil, the key-combo is removed."
           (buffer-string)))
       (expect nil
         (key-combo-lookup [?= ?= ?= ?=]))
-      (desc "key-combo-lookup-original")
-      (expect 'self-insert-command
-        (key-combo-lookup-original (key-description (list ?b))))
-      (expect 'self-insert-command
-        (key-combo-lookup-original "b"))
-      (expect 'self-insert-command
-        (key-combo-lookup-original ?b))
-      (expect 'self-insert-command
-        (key-combo-lookup-original (key-description (list ?=))))
-      (expect 'self-insert-command
-        (key-combo-lookup-original "="))
-      (expect 'self-insert-command
-        (key-combo-lookup-original ?=))
       (desc "key-combo-elementp")
       (expect t
         (every 'identity
@@ -724,7 +711,9 @@ If COMMAND is nil, the key-combo is removed."
       )))
 
 (defun key-combo-pre-command-function ()
-  (if (key-combo-lookup (this-command-keys-vector))
+  (if (and
+       key-combo-mode
+       (key-combo-lookup (this-command-keys-vector)))
       ;;(progn (message "pre")
       (setq this-command 'key-combo)
     ;;)
