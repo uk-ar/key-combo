@@ -263,59 +263,133 @@ If COMMAND is nil, the key-combo is removed."
   (key-combo-define (current-local-map) keys command))
 
 ;; < { [ should map bracket command
-;;(setq key-combo-default-alist
-(defvar key-combo-default-alist
-  '(("=" . (" = " " == " " === " ));;" === " for js
+(defvar key-combo-global-default
+  '(("="  . (" = " " == " " === " ));;" === " for js
     ("=>" . " => ")
-    (">=" . " >= ")
-    ("C-a" . (back-to-indentation beginning-of-line (lambda () (goto-char (point-min))) key-combo-return))
-    ("C-e" . (end-of-line (lambda () (goto-char (point-max))) key-combo-return))
+    (","  . ", ")
+    ;; use beginning-of-buffer for keydescription
+    ;; (lambda () (goto-char (point-min)))
+    ("C-a"   . (back-to-indentation beginning-of-line
+                                  beginning-of-buffer key-combo-return))
+    ("C-e"   . (end-of-line end-of-buffer key-combo-return))
     ("C-M-x" . (key-combo-execute-orignal
                 (lambda ()
                   (let ((current-prefix-arg '(4)))
                     (call-interactively 'eval-defun)))))
-    ("," . ", ")
     ))
 
-(defun key-combo-lisp-default ()
-  (key-combo-define-local (kbd ".") " . ")
-  (key-combo-define-local (kbd ";") '(";; " ";;; " "; "))
-  (key-combo-define-local (kbd "=") "= ")
-  ;;(key-combo-define-local (kbd "=>") "=> ")
-  (key-combo-define-local (kbd ">=") ">= ")
-  ;;(key-combo-define-local (kbd "-") 'self-insert-command)
-  ;; ("/" . ("/`!!'/" "/* `!!' */") );;for regex, comment
-  )
+(defvar key-combo-lisp-default
+  '(("."  . " . ")
+    (";"  . (";; " ";;; " "; "))
+    ("="  . "= ")
+    (">=" . ">= ")
+    ;; ("-" . self-insert-command)
+    ;; ("/" . ("/`!!'/" "/* `!!' */") );;for regex, comment
+    ))
 
-(defun key-combo-c-default ()
-  (key-combo-define-local (kbd "+") '(" + " " ++ "))
-  (key-combo-define-local (kbd "+=") " += ")
-  (key-combo-define-local (kbd "-") '(" - " " -- "))
-  (key-combo-define-local (kbd "-=") " -= ")
-  ;; (key-combo-define-local (kbd ">") '(" > " " >> "))
-  (key-combo-define-local (kbd "!=") " != ")
-  (key-combo-define-local (kbd "&") '(" & " " && "))
-  (key-combo-define-local (kbd "|") '(" | " " || "))
-  )
+(defvar key-combo-lisp-mode-hooks
+  '(lisp-mode-hook
+    emacs-lisp-mode-hook
+    lisp-interaction-mode-hook
+    inferior-gauche-mode-hook
+    scheme-mode-hook))
 
-(defun key-combo-html-default ()
-  (key-combo-define-local (kbd ":") ": ")
-  )
+(defmacro define-key-combo-load (name)
+  `(defun ,(intern (concat "key-combo-load-" name "-default")) ()
+     (dolist (key ,(intern (concat "key-combo-" name "-default")))
+       (key-combo-define-local (read-kbd-macro (car key)) (cdr key)))
+     ))
 
-(defun key-combo-unload-default ()
-  (interactive)
-  (key-combo-load-default-1
-   (current-global-map)
-   (mapcar (lambda(x)
-             (cons (car x)
-                   (make-list (safe-length (cdr-safe x)) nil)))
-           key-combo-default-alist)))
+(define-key-combo-load "lisp")
+
+(defvar key-combo-c-mode-hooks
+  '(c-mode-common-hook
+    c++-mode-hook
+    php-mode-hook
+    ruby-mode-hook
+    cperl-mode-hook
+    javascript-mode-hook
+    js-mode-hook
+    js2-mode-hook))
+
+(defvar key-combo-c-default
+  '(("+"  . (" + " "++"))
+    ("+=" . " += ")
+    ("-"  . (" - " "--"))
+    ("-=" . " -= ")
+    (">"  . (" > " " >> "))
+    (">=" . " >= ")
+    ("%"  . " % ")
+    ("^"  . " ^ ");; c XOR
+    ("!" . self-insert-command) ;;not " !" because of ruby symbol
+    ("!=" . " != ")
+    ;; (":" . " :");;only for ruby
+    ;; ("&"  . (" & " " && ")) ;;not use because c pointer
+    ;; ("*"  . " * " ) ;;not use because c pointer
+    ("?" . "? ");; for ternary operator
+    ("<"  . (" < " " << "))
+    ("<=" . " <= ")
+    ;; ("|"  . (" | " " || ")) ;;ruby block
+    ;; ("/" . (" / " "// ")) ;; devision or comment start
+    ("/" . self-insert-command)
+    ("/*" . "/* `!!' */")
+    ;; (key-combo-define map (kbd "=~") " =~ ")
+    ;; (key-combo-define map (kbd "<<") " << ")
+    ))
+
+(define-key-combo-load "c")
+
+(defvar key-combo-objc-default
+  '(("@"  . "@\"`!!'\"")
+    ))
+
+(define-key-combo-load "objc")
+
+(defvar key-combo-html-mode-hooks
+  '(html-mode-hook
+    css-mode-hook))
+
+(defvar key-combo-html-default
+  '((":"  . ": ")
+    ))
+
+(define-key-combo-load "html")
+
+(defvar key-combo-org-default
+  '(("C-a" . (org-beginning-of-line
+             beginning-of-buffer
+             key-combo-return));;back-to-indentation
+    ("C-e" . (org-end-of-line
+              end-of-buffer
+              key-combo-return))
+    ))
+
+(define-key-combo-load "org")
 
 (defun key-combo-load-default ()
   (interactive)
   (key-combo-mode 1)
-  (key-combo-load-default-1 (current-global-map) key-combo-default-alist)
+  (key-combo-load-default-1 (current-global-map)
+                            key-combo-global-default)
+  (key-combo-load-by-hooks key-combo-lisp-mode-hooks
+                           'key-combo-load-lisp-default)
+  (key-combo-load-by-hooks key-combo-c-mode-hooks
+                           'key-combo-load-c-default)
+  (key-combo-load-by-hooks '(objc-mode-hook)
+                           'key-combo-load-objc-default)
+  (key-combo-load-by-hooks key-combo-html-mode-hooks
+                           'key-combo-load-objc-default)
+  (key-combo-load-by-hooks '(org-mode-hook)
+                           'key-combo-load-org-default)
   )
+
+(defun key-combo-load-by-hooks (hooks func)
+  (dolist (hook hooks)
+      (add-hook hook func)))
+
+(defun key-combo-load-default-1 (map keys)
+  (dolist (key keys)
+    (key-combo-define map (read-kbd-macro (car key)) (cdr key))))
 
 ;;(declare-function key-combo-return "")
 (lexical-let ((key-combo-start-position nil))
@@ -327,28 +401,6 @@ If COMMAND is nil, the key-combo is removed."
       (progn
         (goto-char (car key-combo-start-position))
         (set-window-start (selected-window) (cdr key-combo-start-position)))))
-  )
-
-(defun key-combo-load-default-1 (map keys)
-  (dolist (key keys)
-    (key-combo-define map (read-kbd-macro (car key))(cdr key)))
-  (add-hook 'emacs-lisp-mode-hook 'key-combo-lisp-default)
-  (add-hook 'c-mode-common-hook 'key-combo-c-default)
-  (add-hook
-   'org-mode-hook
-   (lambda ()
-     (key-combo-define-local (kbd "C-a")
-                             '(org-beginning-of-line
-                               (lambda () (goto-char (point-min)))
-                               key-combo-return));;back-to-indentation
-     (key-combo-define-local (kbd "C-e")
-                             '(org-end-of-line
-                               (lambda () (goto-char (point-max)))
-                               key-combo-return))
-     ))
-  ;; (key-combo-define map (kbd "=~") " =~ ")
-  ;; (key-combo-define map (kbd "(=") "(=`!!')")
-  ;; (key-combo-define map (kbd "<<") " << ")
   )
 
 (defun test1()
