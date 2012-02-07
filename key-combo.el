@@ -284,7 +284,7 @@ If COMMAND is nil, the key-combo is removed."
     ("="  . "= ")
     (">=" . ">= ")
     ;; ("-" . self-insert-command)
-    ;; ("/" . ("/`!!'/" "/* `!!' */") );;for regex, comment
+    ;; ("/" . ("/`!!'/" "/* `!!' */") );;for regexp, comment
     ))
 
 (defvar key-combo-lisp-mode-hooks
@@ -319,22 +319,22 @@ If COMMAND is nil, the key-combo is removed."
     ("-=" . " -= ")
     (">"  . (" > " " >> "))
     (">=" . " >= ")
+    ("=~" . " =~ ");;for ruby regexp
     ("%"  . " % ")
     ("^"  . " ^ ");; c XOR
-    ("!" . self-insert-command) ;;not " !" because of ruby symbol
+    ("!" . key-combo-execute-orignal) ;;not " !" because of ruby symbol
     ("!=" . " != ")
     ;; (":" . " :");;only for ruby
     ;; ("&"  . (" & " " && ")) ;;not use because c pointer
     ;; ("*"  . " * " ) ;;not use because c pointer
     ("?" . "? ");; for ternary operator
-    ("<"  . (" < " " << "))
+    ;; ("<"  . (" < " " << "));; not use because of c include
+    ("<" . (key-combo-execute-orignal " << "))
     ("<=" . " <= ")
     ;; ("|"  . (" | " " || ")) ;;ruby block
-    ;; ("/" . (" / " "// ")) ;; devision or comment start
-    ("/" . self-insert-command)
+    ;; ("/" . (" / " "// " "/`!!'/")) ;; devision,comment start or regexp
+    ("/" . key-combo-execute-orignal)
     ("/*" . "/* `!!' */")
-    ;; (key-combo-define map (kbd "=~") " =~ ")
-    ;; (key-combo-define map (kbd "<<") " << ")
     ))
 
 (define-key-combo-load "c")
@@ -415,16 +415,6 @@ If COMMAND is nil, the key-combo is removed."
   (when(fboundp 'expectations)
     (expectations
       (desc "key-combo")
-      ;; (expect ">"
-      ;;   (with-temp-buffer
-      ;;     (setq unread-command-events (listify-key-sequence ">>\C-a"))
-      ;;     (read-event)
-      ;;     (setq last-command-event ?>)
-      ;;     (call-interactively 'key-combo)
-      ;;     ;; (call-interactively 'key-combo)
-      ;;     ;;(insert (char-to-string(car unread-command-events)))
-      ;;     (buffer-string)
-      ;;     ))
       (expect nil
         (with-temp-buffer
           (key-combo-mode -1)
@@ -434,6 +424,14 @@ If COMMAND is nil, the key-combo is removed."
         (with-temp-buffer
           (key-combo-mode 1)
           (if (memq 'key-combo-pre-command-function pre-command-hook) t nil)
+          ))
+      (expect ">"
+        (with-temp-buffer
+          (setq unread-command-events (listify-key-sequence ">\C-a"))
+          (read-event)
+          (setq last-command-event ?>)
+          (call-interactively 'key-combo)
+          (buffer-string)
           ))
       (expect " = "
         (with-temp-buffer
@@ -688,7 +686,7 @@ If COMMAND is nil, the key-combo is removed."
         (with-temp-buffer
           (key-combo-define-global (kbd "C-M-h C-M-h") " === ")
           (setq unread-command-events
-                (listify-key-sequence "\C-\M-h\C-\M-h"))
+                (listify-key-sequence "\C-\M-h\C-\M-h\C-a"))
           (read-event)
           (call-interactively 'key-combo)
           (buffer-string)))
