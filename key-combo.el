@@ -39,7 +39,8 @@
 ;;
 ;; Add to your ~/.emacs
 ;;
-;;  (require 'key-combo)
+;; (require 'key-combo)
+;; (key-combo-mode 1)
 ;;
 ;; and some chords, for example
 ;;
@@ -340,8 +341,9 @@ If COMMAND is nil, the key-combo is removed."
 (define-key-combo-load "c")
 
 (defvar key-combo-objc-default
-  '(("@"  . "@\"`!!'\"")
-    ))
+  (append '(("@"  . "@\"`!!'\""))
+          key-combo-c-default
+          ))
 
 (define-key-combo-load "objc")
 
@@ -415,6 +417,7 @@ If COMMAND is nil, the key-combo is removed."
   (when(fboundp 'expectations)
     (expectations
       (desc "key-combo")
+      ;; add i-search mode
       (expect nil
         (with-temp-buffer
           (key-combo-mode -1)
@@ -760,9 +763,14 @@ If COMMAND is nil, the key-combo is removed."
                          ))))
       )))
 
+(defvar key-combo-disable-faces
+  )
+
 (defun key-combo-pre-command-function ()
   (if (and
        key-combo-mode
+       (not (minibufferp))
+       (not isearch-mode)
        (key-combo-lookup (this-command-keys-vector)))
       ;;(progn (message "pre")
       (setq this-command 'key-combo)
