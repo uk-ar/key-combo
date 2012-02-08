@@ -2,7 +2,7 @@
 
 ;;-------------------------------------------------------------------
 ;;
-;; Copyright (C) 2011 Yuuki Arisawa
+;; Copyright (C) 2011, 2012 Yuuki Arisawa
 ;;
 ;; This file is NOT part of Emacs.
 ;;
@@ -26,7 +26,7 @@
 ;; Author: Yuuki Arisawa <yuuki.ari@gmail.com>
 ;; URL:https://github.com/uk-ar/key-combo
 ;; Created: 30 November 2011
-;; Version: 1.0
+;; Version: 1.1
 ;; Keywords: keyboard input
 
 ;;; Commentary:
@@ -53,6 +53,10 @@
 
 ;;; History:
 
+;; Revision 1.1 2012/02/08 21:56:27
+;; * Add key-combo-define-local function to set key for local keymap.
+;; * Add a lot of default setting in pogin's blog.
+;;
 ;; Revision 1.0 2012/01/31 22:03:50
 ;; * Change clean-up function to use undo
 ;;
