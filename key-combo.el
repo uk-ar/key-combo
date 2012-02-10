@@ -388,7 +388,7 @@ If COMMAND is nil, the key-combo is removed."
   (key-combo-load-by-hooks '(objc-mode-hook)
                            'key-combo-load-objc-default)
   (key-combo-load-by-hooks key-combo-html-mode-hooks
-                           'key-combo-load-objc-default)
+                           'key-combo-load-html-default)
   (key-combo-load-by-hooks '(org-mode-hook)
                            'key-combo-load-org-default)
   )
