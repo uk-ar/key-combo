@@ -54,7 +54,7 @@
 ;;; History:
 
 ;; Revision 1.2 2012/02/10 22:15:52
-;; * Add support to use SKK.
+;; * Add support to use SKK. Bug reported by ballforest
 ;;
 ;; Revision 1.1 2012/02/08 21:56:27
 ;; * Add key-combo-define-local function to set key for local keymap.
