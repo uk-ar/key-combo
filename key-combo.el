@@ -151,10 +151,10 @@
          (all-command-keys (list last-input-event))
          (command (key-combo-lookup all-command-keys))
          (key-combo-undo-list))
-    (if (eq 'self-insert-command
-            (key-binding (vector last-input-event)))
+    (if (memq (key-binding (vector last-input-event))
+              '(self-insert-command skk-insert))
         (progn
-          (key-combo-command-execute 'self-insert-command)
+          (key-combo-command-execute (key-binding (vector last-input-event)))
           (if (key-combo-comment-or-stringp) (return-from key-combo nil))
           ;; undo in first loop
           ))
@@ -271,7 +271,6 @@ If COMMAND is nil, the key-combo is removed."
 (defvar key-combo-global-default
   '(("="  . (" = " " == " " === " ));;" === " for js
     ("=>" . " => ")
-    (","  . ", ")
     ;; use beginning-of-buffer for keydescription
     ;; (lambda () (goto-char (point-min)))
     ("C-a"   . (back-to-indentation beginning-of-line
@@ -285,6 +284,7 @@ If COMMAND is nil, the key-combo is removed."
 
 (defvar key-combo-lisp-default
   '(("."  . " . ")
+    (","  . ", ")
     (";"  . (";; " ";;; " "; "))
     ("="  . "= ")
     (">=" . ">= ")
@@ -318,7 +318,8 @@ If COMMAND is nil, the key-combo is removed."
     js2-mode-hook))
 
 (defvar key-combo-c-default
-  '(("+"  . (" + " "++"))
+  '((","  . ", ")
+    ("+"  . (" + " "++"))
     ("+=" . " += ")
     ("-"  . (" - " "--"))
     ("-=" . " -= ")
@@ -775,6 +776,7 @@ If COMMAND is nil, the key-combo is removed."
        key-combo-mode
        (not (minibufferp))
        (not isearch-mode)
+       ;; (not skk-mode)
        (key-combo-lookup (this-command-keys-vector)))
       ;;(progn (message "pre")
       (setq this-command 'key-combo)
