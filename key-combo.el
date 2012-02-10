@@ -26,7 +26,7 @@
 ;; Author: Yuuki Arisawa <yuuki.ari@gmail.com>
 ;; URL:https://github.com/uk-ar/key-combo
 ;; Created: 30 November 2011
-;; Version: 1.1
+;; Version: 1.2
 ;; Keywords: keyboard input
 
 ;;; Commentary:
@@ -53,6 +53,9 @@
 
 ;;; History:
 
+;; Revision 1.2 2012/02/10 22:15:52
+;; * Add support to use SKK.
+;;
 ;; Revision 1.1 2012/02/08 21:56:27
 ;; * Add key-combo-define-local function to set key for local keymap.
 ;; * Add a lot of default setting in pogin's blog.
