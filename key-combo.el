@@ -55,6 +55,7 @@
 
 ;; Revision 1.2 2012/02/10 22:15:52
 ;; * Add support to use SKK. Bug reported by ballforest
+;; * Bug fix for html mode.
 ;;
 ;; Revision 1.1 2012/02/08 21:56:27
 ;; * Add key-combo-define-local function to set key for local keymap.
@@ -137,11 +138,16 @@
         (setq key-combo-undo-list
               (append buffer-undo-list key-combo-undo-list)))))
 
+(defvar key-combo-disable-faces
+  '(font-lock-comment-face
+    font-lock-doc-face
+    font-lock-string-face
+    font-lock-comment-delimiter-face))
+
 (defun key-combo-comment-or-stringp (&optional pos)
-  (setq pos (or pos (point)))
+  (setq pos (if (bobp) 1 (1- (or pos (point)))))
   (memq (get-text-property pos 'face)
-        '(font-lock-comment-face font-lock-doc-face
-                                 font-lock-string-face))
+        key-combo-disable-faces)
   )
 
 ;;(browse-url "http://q.hatena.ne.jp/1226571494")
@@ -180,8 +186,8 @@
             (progn
               (if (eq 2 (length all-command-keys)) (throw 'invalid-event t))
               (setq all-command-keys (list last-input-event))
-              (setq command (key-combo-lookup all-command-keys))))
-        );;end while
+              (setq command (key-combo-lookup all-command-keys)))))
+      ;;end while
       );;end catch
     (setq unread-command-events
           (cons last-input-event unread-command-events))
@@ -342,7 +348,7 @@ If COMMAND is nil, the key-combo is removed."
     ("<=" . " <= ")
     ;; ("|"  . (" | " " || ")) ;;ruby block
     ;; ("/" . (" / " "// " "/`!!'/")) ;; devision,comment start or regexp
-    ("/" . key-combo-execute-orignal)
+    ("/" . (" / " "// "))
     ("/*" . "/* `!!' */")
     ))
 
@@ -425,7 +431,6 @@ If COMMAND is nil, the key-combo is removed."
   (when(fboundp 'expectations)
     (expectations
       (desc "key-combo")
-      ;; add i-search mode
       (expect nil
         (with-temp-buffer
           (key-combo-mode -1)
@@ -435,6 +440,52 @@ If COMMAND is nil, the key-combo is removed."
         (with-temp-buffer
           (key-combo-mode 1)
           (if (memq 'key-combo-pre-command-function pre-command-hook) t nil)
+          ))
+      (expect "\"="
+        (with-temp-buffer
+          (emacs-lisp-mode)
+          (insert "\"")
+          (font-lock-fontify-buffer)
+          (setq unread-command-events (listify-key-sequence "=\C-a"))
+          (read-event)
+          (setq last-command-event ?=)
+          (call-interactively 'key-combo)
+          (buffer-substring-no-properties (point-min) (point-max))
+          ))
+      (expect ";="
+        (with-temp-buffer
+          (emacs-lisp-mode)
+          (insert ";")
+          (font-lock-fontify-buffer)
+          (setq unread-command-events (listify-key-sequence "=\C-a"))
+          (read-event)
+          (setq last-command-event ?=)
+          (call-interactively 'key-combo)
+          (buffer-substring-no-properties (point-min) (point-max))
+          ))
+      (expect ";。"
+        (with-temp-buffer
+          (emacs-lisp-mode)
+          (skk-mode 1)
+          (insert ";")
+          (font-lock-fontify-buffer)
+          (setq unread-command-events (listify-key-sequence ".\C-a"))
+          (read-event)
+          (setq last-command-event ?.)
+          (call-interactively 'key-combo)
+          (buffer-substring-no-properties (point-min) (point-max))
+          ))
+      (expect ";."
+        (with-temp-buffer
+          (emacs-lisp-mode)
+          (skk-mode -1)
+          (insert ";")
+          (font-lock-fontify-buffer)
+          (setq unread-command-events (listify-key-sequence ".\C-a"))
+          (read-event)
+          (setq last-command-event ?.)
+          (call-interactively 'key-combo)
+          (buffer-substring-no-properties (point-min) (point-max))
           ))
       (expect ">"
         (with-temp-buffer
@@ -771,9 +822,6 @@ If COMMAND is nil, the key-combo is removed."
                          ))))
       )))
 
-(defvar key-combo-disable-faces
-  )
-
 (defun key-combo-pre-command-function ()
   (if (and
        key-combo-mode
@@ -789,7 +837,6 @@ If COMMAND is nil, the key-combo is removed."
 ;;;###autoload
 (define-minor-mode key-combo-mode
   "Toggle key combo."
-  :global t
   :lighter " KC"
   :group 'key-combo
   (if key-combo-mode
