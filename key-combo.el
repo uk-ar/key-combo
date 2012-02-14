@@ -124,8 +124,10 @@
       (let ((buffer-undo-list))
         (primitive-undo (1+ (key-combo-count-boundary key-combo-undo-list))
                         key-combo-undo-list)
-        (setq key-combo-undo-list
-              (append buffer-undo-list key-combo-undo-list)))))
+        ;; add-to-list?
+        (unless (eq buffer-undo-list t)
+          (setq key-combo-undo-list
+                (append buffer-undo-list key-combo-undo-list))))))
 
 (defun key-combo-command-execute (command)
   (let ((buffer-undo-list))
@@ -134,7 +136,8 @@
       (call-interactively command))
      (t (funcall command)))
     (undo-boundary)
-    (if (boundp 'key-combo-undo-list)
+    (if (and (boundp 'key-combo-undo-list)
+             (not (eq buffer-undo-list t)))
         (setq key-combo-undo-list
               (append buffer-undo-list key-combo-undo-list)))))
 
@@ -191,7 +194,8 @@
       );;end catch
     (setq unread-command-events
           (cons last-input-event unread-command-events))
-    (setq buffer-undo-list (append key-combo-undo-list buffer-undo-list))
+    (unless (eq buffer-undo-list t)
+      (setq buffer-undo-list (append key-combo-undo-list buffer-undo-list)))
     );;end let
   );;end key-combo
 
@@ -293,9 +297,10 @@ If COMMAND is nil, the key-combo is removed."
 
 (defvar key-combo-lisp-default
   '(("."  . " . ")
-    (","  . ", ")
+    (","  . (key-combo-execute-orignal))
+    (",@" . " ,@");; for macro
     (";"  . (";; " ";;; " "; "))
-    ("="  . "= ")
+    ("="  . ("= " "eq " "equal "))
     (">=" . ">= ")
     ;; ("-" . self-insert-command)
     ;; ("/" . ("/`!!'/" "/* `!!' */") );;for regexp, comment
@@ -838,6 +843,7 @@ If COMMAND is nil, the key-combo is removed."
 (define-minor-mode key-combo-mode
   "Toggle key combo."
   :lighter " KC"
+  :global t
   :group 'key-combo
   (if key-combo-mode
       (add-hook 'pre-command-hook
