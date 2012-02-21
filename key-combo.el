@@ -845,7 +845,7 @@ which in most cases is shared with all other buffers in the same major mode.
                          ))))
       )))
 
-(defun key-combo-pre-command-function ()
+(defun key-combo-pre-command-function-old ()
   (if (and
        key-combo-mode
        (not (minibufferp))
@@ -855,6 +855,85 @@ which in most cases is shared with all other buffers in the same major mode.
       ;;(progn (message "pre")
       (setq this-command 'key-combo)
     ))
+
+(defun key-combo-undo2 ()
+  "returns buffer undo list"
+  (message "count:%d" (1+ (key-combo-count-boundary buffer-undo-list)))
+  (primitive-undo (1+ (key-combo-count-boundary buffer-undo-list))
+                  buffer-undo-list)
+  )
+
+(defun key-combo-command-execute2 (command)
+  "returns buffer undo list"
+    (cond
+     ((commandp command)
+      (call-interactively command))
+     (t (funcall command)))
+    (undo-boundary)
+  )
+
+(defvar key-combo-command-keys nil)
+(defvar key-combo-need-undop t)
+
+(defun key-combo2 ()
+  (interactive)
+  ;; (message "keys:%s" key-combo-command-keys)
+  (let ((command (key-combo-lookup key-combo-command-keys))
+        (buffer-undo-list key-combo-undo-list))
+    (if key-combo-need-undop
+        ;; (setq key-combo-undo-list
+        (key-combo-undo2)
+      ;; )
+      ;; (key-combo-undo)
+      )
+    ;; (setq key-combo-undo-list
+    (key-combo-command-execute2 command)
+    ;; )
+    ;; (key-combo-command-execute command)
+    (setq key-combo-need-undop t)
+    (setq key-combo-undo-list buffer-undo-list)
+    )
+  )
+
+(defvar key-combo-undo-list nil)
+
+(defun key-combo-finalize ()
+  (setq key-combo-need-undop nil
+        buffer-undo-list
+        (append key-combo-undo-list buffer-undo-list)
+        key-combo-undo-list nil
+        key-combo-command-keys nil))
+
+(defun key-combo-pre-command-function ()
+  (setq key-combo-command-keys
+        (vconcat key-combo-command-keys (this-command-keys-vector)))
+  (unless (key-combo-lookup key-combo-command-keys);;retry
+    ;; need undo?
+    (if (and (equal [] (delete (aref key-combo-command-keys 0)
+                               key-combo-command-keys))
+             (not (eq 2 (length key-combo-command-keys))))
+        (setq key-combo-need-undop t)
+      (key-combo-finalize))
+    (setq key-combo-command-keys (this-command-keys-vector)))
+  (cond ((and
+          key-combo-mode
+          (not (minibufferp))
+          (not isearch-mode)
+          (key-combo-lookup key-combo-command-keys))
+         ;; first time
+         (unless (eq last-command 'key-combo2)
+           (message "first")
+           (key-combo-set-start-position (cons (point) (window-start))))
+         (setq this-command 'key-combo2)
+         )
+        (t
+         (if (eq last-command 'key-combo2)
+             (progn
+               ;;end key-combo
+               (key-combo-finalize)
+               (message "end")
+               )))
+        ))
 
 ;;;###autoload
 (define-minor-mode key-combo-mode
