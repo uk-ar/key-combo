@@ -107,12 +107,13 @@
   (interactive)
   (describe-bindings [key-combo]))
 
-(defun key-combo-lookup (events)
-  (let ((key ;;string
-         (if (or (vectorp events) (consp events))
-             (key-description events);;for vector
-           (single-key-description events))))
-    (key-binding (vector 'key-combo (intern key)))))
+(defun key-combo-lookup (key)
+  ;; copy from `key-binding'
+  "Return the binding for command KEY in key-combo keymaps.
+KEY is a string or vector, a sequence of keystrokes.
+The binding is probably a symbol with a function definition."
+  (let ((string (key-description (vconcat key))))
+    (key-binding (vector 'key-combo (intern string)))))
 
 (defun key-combo-execute-orignal ()
   (interactive)
@@ -160,7 +161,7 @@
 (defun* key-combo (arg)
   (interactive "P")
   (let* ((same-key last-input-event)
-         (all-command-keys (list last-input-event))
+         (all-command-keys (vector last-input-event))
          (command (key-combo-lookup all-command-keys))
          (key-combo-undo-list))
     (if (memq (key-binding (vector last-input-event))
@@ -182,13 +183,13 @@
                     ((eq key-combo-loop-option 'only-same-key)
                      (if (eq last-input-event same-key) same-key nil))
                     ((eq key-combo-loop-option 'never) nil)))
-        (setq all-command-keys (append all-command-keys
-                                       (list last-input-event)))
+        (setq all-command-keys (vconcat all-command-keys
+                                       (vector last-input-event)))
         (setq command (key-combo-lookup all-command-keys))
         (if (and (not command) same-key);;for loop
-            (progn
+            (progn;; retry
               (if (eq 2 (length all-command-keys)) (throw 'invalid-event t))
-              (setq all-command-keys (list last-input-event))
+              (setq all-command-keys (vector last-input-event))
               (setq command (key-combo-lookup all-command-keys)))))
       ;;end while
       );;end catch
@@ -235,18 +236,23 @@
       (null element));;for unset key
   )
 
-(defun key-combo-define (keymap keys commands)
-  "Define in KEYMAP, a key-combo of two keys in KEYS starting a COMMAND.
-\nKEYS can be a string or a vector of two elements. Currently only elements
-that corresponds to ascii codes in the range 32 to 126 can be used.
-\nCOMMAND can be an interactive function, a string, or nil.
-If COMMAND is nil, the key-combo is removed."
+(defun key-combo-define (keymap key commands)
+  "In KEYMAP, define key sequence KEY as COMMANDS.
+KEYMAP is a keymap.\n
+KEY is a string or a vector of symbols and characters meaning a
+sequence of keystrokes and events.  Non-ASCII characters with codes
+above 127 (such as ISO Latin-1) can be included if you use a vector.\n
+COMMANDS can be an interactive function, a string, nil, or list of these COMMAND.
+If COMMANDS is string, treated as a smartchr flavor keyboard macro.
+If COMMANDS is nil, the key-chord is removed.
+If COMMANDS is list, treated as sequential commands.
+"
   ;;copy from key-chord-define
   (cond
    ;;for sequence '(" = " " == ")
    ((and (not (key-combo-elementp commands))
          (key-combo-elementp (car-safe commands)))
-    (let* ((base-key (listify-key-sequence keys))
+    (let* ((base-key (listify-key-sequence key))
            (seq-keys base-key));;list
       (mapc '(lambda(command)
                (key-combo-define keymap (vconcat seq-keys) command)
@@ -257,26 +263,27 @@ If COMMAND is nil, the key-combo is removed."
     (unless (key-combo-elementp commands)
       (error "%s is not command" commands))
     (define-key keymap
-      (vector 'key-combo (intern (key-description keys)))
+      (vector 'key-combo (intern (key-description key)))
       (key-combo-get-command commands))
     )
    ))
 
 (defun key-combo-define-global (keys command)
-  "Define a key-combo of two keys in KEYS starting a COMMAND.
-\nKEYS can be a string or a vector of two elements. Currently only elements
-that corresponds to ascii codes in the range 32 to 126 can be used.
-\nCOMMAND can be an interactive function, a string, or nil.
-If COMMAND is nil, the key-combo is removed."
+  "Give KEY a global binding as COMMAND.\n
+See also `key-combo-define'\n
+Note that if KEY has a local binding in the current buffer,
+that local binding will continue to shadow any global binding
+that you make with this function.
+"
   ;;(interactive "sSet key chord globally (2 keys): \nCSet chord \"%s\" to command: ")
   (key-combo-define (current-global-map) keys command))
 
 (defun key-combo-define-local (keys command)
-  "Define a key-combo of two keys in KEYS starting a COMMAND.
-\nKEYS can be a string or a vector of two elements. Currently only elements
-that corresponds to ascii codes in the range 32 to 126 can be used.
-\nCOMMAND can be an interactive function, a string, or nil.
-If COMMAND is nil, the key-combo is removed."
+  "Give KEY a local binding as COMMAND.\n
+See also `key-combo-define'\n
+The binding goes in the current buffer's local map,
+which in most cases is shared with all other buffers in the same major mode.
+"
   ;;(interactive "sSet key chord globally (2 keys): \nCSet chord \"%s\" to command: ")
   (key-combo-define (current-local-map) keys command))
 
@@ -465,6 +472,16 @@ If COMMAND is nil, the key-combo is removed."
           (setq unread-command-events (listify-key-sequence "=\C-a"))
           (read-event)
           (setq last-command-event ?=)
+          (call-interactively 'key-combo)
+          (buffer-substring-no-properties (point-min) (point-max))
+          ))
+      (expect ",,"
+        (with-temp-buffer
+          (emacs-lisp-mode)
+          (setq unread-command-events (listify-key-sequence ",,\C-a"))
+          (read-event)
+          (setq last-command-event ?,)
+          (call-interactively 'key-combo)
           (call-interactively 'key-combo)
           (buffer-substring-no-properties (point-min) (point-max))
           ))
@@ -733,6 +750,7 @@ If COMMAND is nil, the key-combo is removed."
       ;;(key-binding '(134217752));;ng
       ;;(key-binding 134217752);;ng
       ;;(key-combo-load-default)
+
       (expect " = "
         (with-temp-buffer
           (funcall
@@ -741,7 +759,7 @@ If COMMAND is nil, the key-combo is removed."
       (expect " == "
         (with-temp-buffer
           (funcall
-           (key-combo-lookup "= ="))
+           (key-combo-lookup "=="))
           (buffer-string)))
       (expect " == "
         (with-temp-buffer
@@ -788,10 +806,10 @@ If COMMAND is nil, the key-combo is removed."
       (desc "key-combo-elementp")
       (expect t
         (every 'identity
-               ;;(identity
+        ;; (identity
                (mapcar (lambda(command)
                          (progn (key-combo-define-global ">>" command)
-                                (identity (key-combo-lookup "> >"))))
+                                (identity (key-combo-lookup ">>"))))
                        '((lambda()())
                          ">"
                          ;;nil
@@ -836,7 +854,6 @@ If COMMAND is nil, the key-combo is removed."
        (key-combo-lookup (this-command-keys-vector)))
       ;;(progn (message "pre")
       (setq this-command 'key-combo)
-    ;;)
     ))
 
 ;;;###autoload
