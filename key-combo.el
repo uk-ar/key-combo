@@ -142,6 +142,17 @@ The binding is probably a symbol with a function definition."
 ;;         (setq key-combo-undo-list
 ;;               (append buffer-undo-list key-combo-undo-list)))))
 
+(defun key-combo-memq (a b)
+  (setq a (if (consp a) a (list a)))
+  (setq b (if (consp b) b (list b)))
+  (apply
+   'append
+   (delete-if
+    'null
+    (mapcar
+     (lambda (x) (if (memq x b) (list x) nil))
+     a))))
+
 (defvar key-combo-disable-faces
   '(font-lock-comment-face
     font-lock-doc-face
@@ -150,7 +161,7 @@ The binding is probably a symbol with a function definition."
 
 (defun key-combo-comment-or-stringp ()
   (setq pos (if (or (bobp) (bolp)) (point) (1- (point))))
-  (if (memq (get-text-property pos 'face) key-combo-disable-faces)
+  (if (key-combo-memq (get-text-property pos 'face) key-combo-disable-faces)
       t nil)
   )
 
