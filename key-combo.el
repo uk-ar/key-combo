@@ -465,7 +465,7 @@ which in most cases is shared with all other buffers in the same major mode.
     ;; (message "%S:%S" unread-command-events last-command-event)
     )
   ;;(key-binding "C-M-x")
-  (key-combo-finalize)
+  (setq key-combo-command-keys nil)
   )
 
 ;; (flet ((this-command-keys-vector () (vector (read-event))))
@@ -585,7 +585,6 @@ which in most cases is shared with all other buffers in the same major mode.
       (expect ";; ."
         (with-temp-buffer
           (emacs-lisp-mode)
-          (buffer-enable-undo)
           (setq unread-command-events (listify-key-sequence
                                        (kbd ";.")))
           (key-combo-test-command-loop)
@@ -608,7 +607,7 @@ which in most cases is shared with all other buffers in the same major mode.
           (insert ";")
           (font-lock-fontify-buffer)
           (setq last-command-event ?,)
-          (funcall 'key-combo-pre-command-function)
+          (key-combo-pre-command-function)
           (call-interactively this-command)
           (buffer-substring-no-properties (point-min) (point-max))
           ))
@@ -720,6 +719,17 @@ which in most cases is shared with all other buffers in the same major mode.
         (with-temp-buffer
           (key-combo-finalize)
           (insert "B\n IP")
+          (setq unread-command-events (listify-key-sequence
+                                       (kbd "C-a")))
+          (key-combo-test-command-loop)
+          (char-to-string(following-char))
+          ))
+      (expect "I"
+        (with-temp-buffer
+          (emacs-lisp-mode)
+          (font-lock-fontify-buffer)
+          (key-combo-finalize)
+          (insert "B\n I;P")
           (setq unread-command-events (listify-key-sequence
                                        (kbd "C-a")))
           (key-combo-test-command-loop)
@@ -1046,14 +1056,14 @@ which in most cases is shared with all other buffers in the same major mode.
             (not (minibufferp))
             (not isearch-mode)
             (key-combo-lookup key-combo-command-keys)
-            (not (key-combo-comment-or-stringp)))
+            (not (and (key-combo-comment-or-stringp)
+                      (memq (key-binding command-key-vector)
+                            '(self-insert-command skk-insert))))
+            )
            (setq this-command 'key-combo)
            ;; execute key-combo
-           (message "execute key-combo:%s:%s:u:%s"
-                    (key-binding command-key-vector) command-key-vector key-combo-need-undop)
-           ;; (char-to-string 44),
-           ;; (char-to-string 59);
-           ;; (char-to-string 46).
+           ;; (message "execute key-combo:%s:%s:u:%s"
+           ;;          (key-binding command-key-vector) command-key-vector key-combo-need-undop)
            (cond (first-timep
                   ;; first time
                   (setq key-combo-original-undo-list buffer-undo-list
@@ -1061,14 +1071,6 @@ which in most cases is shared with all other buffers in the same major mode.
                   (key-combo-set-start-position (cons (point) (window-start)))
                   (cond ((memq (key-binding command-key-vector)
                                '(self-insert-command skk-insert))
-                         (message "insert:%S" (key-combo-comment-or-stringp))
-                         ;; (if
-                         ;;     (progn
-                         ;;       (message "string")
-                         ;;       (key-combo-finalize)
-                         ;;       (setq this-command
-                         ;;             (key-binding command-key-vector))
-                         ;;       )
                            (undo-boundary)
                            (key-combo-command-execute
                             (key-binding
