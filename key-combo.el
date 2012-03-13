@@ -26,7 +26,7 @@
 ;; Author: Yuuki Arisawa <yuuki.ari@gmail.com>
 ;; URL:https://github.com/uk-ar/key-combo
 ;; Created: 30 November 2011
-;; Version: 1.2
+;; Version: 1.3
 ;; Keywords: keyboard input
 
 ;;; Commentary:
@@ -53,6 +53,9 @@
 
 ;;; History:
 
+;; Revision 1.3 2012/03/13 22:00:23
+;; * Make works well for other elisp which use post command hook
+;;
 ;; Revision 1.2 2012/02/10 22:15:52
 ;; * Add support to use SKK. Bug reported by ballforest
 ;; * Bug fix for html mode.
