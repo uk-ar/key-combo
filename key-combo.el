@@ -274,12 +274,12 @@ If COMMANDS is nil, the key-chord is removed.
 If COMMANDS is list, treated as sequential commands.
 "
   ;;copy from key-chord-define
+  (let ((base-key (list (car (listify-key-sequence key)))))
   (cond
    ;;for sequence '(" = " " == ")
    ((and (not (key-combo-elementp commands))
          (key-combo-elementp (car-safe commands)))
-    (let* ((base-key (listify-key-sequence key))
-           (seq-keys base-key));;list
+      (let ((seq-keys base-key));;list
       (mapc '(lambda(command)
                (key-combo-define keymap (vconcat seq-keys) command)
                (setq seq-keys
@@ -288,11 +288,20 @@ If COMMANDS is list, treated as sequential commands.
    (t
     (unless (key-combo-elementp commands)
       (error "%s is not command" commands))
+    ;; regard first key as key-combo-execute-orignal
+    (let ((first (lookup-key ;; lookup-key returns nil at first
+                  keymap
+                  (vector 'key-combo (intern (key-description base-key))))))
+      (when
+          (and (eq (safe-length (listify-key-sequence key)) 2)
+               (or (numberp first) (null first)))
+        (define-key keymap
+          (vector 'key-combo (intern (key-description base-key)))
+          'key-combo-execute-orignal)))
     (define-key keymap
       (vector 'key-combo (intern (key-description key)))
       (key-combo-get-command commands))
-    )
-   ))
+    ))))
 
 (defun key-combo-define-global (keys command)
   "Give KEY a global binding as COMMAND.\n
