@@ -24,7 +24,7 @@
 ;;-------------------------------------------------------------------
 
 ;; Author: Yuuki Arisawa <yuuki.ari@gmail.com>
-;; URL:https://github.com/uk-ar/key-combo
+;; URL: https://github.com/uk-ar/key-combo
 ;; Created: 30 November 2011
 ;; Version: 1.3
 ;; Keywords: keyboard input
@@ -537,12 +537,24 @@ which in most cases is shared with all other buffers in the same major mode.
       (expect "= "
         (with-temp-buffer
           (emacs-lisp-mode)
-          ;; (insert "\"")
           (font-lock-fontify-buffer)
           (setq unread-command-events (listify-key-sequence
                                        (kbd "=")))
           (key-combo-test-command-loop)
           (buffer-substring-no-properties (point-min) (point-max))
+          ))
+      (desc "isearch-mode")
+      (expect "";;bug? "="
+        (with-temp-buffer
+          (emacs-lisp-mode)
+          (isearch-mode t)
+          (font-lock-fontify-buffer)
+          (setq unread-command-events (listify-key-sequence
+                                       (kbd "=")))
+          (key-combo-test-command-loop)
+          (isearch-done)
+          (buffer-substring-no-properties (point-min) (point-max))
+          ;; (setq isearch-mode nil)
           ))
       (expect "\"="
         (with-temp-buffer
