@@ -326,6 +326,7 @@ which in most cases is shared with all other buffers in the same major mode.
 (defvar key-combo-global-default
   '(("="  . (" = " " == " " === " ));;" === " for js
     ("=>" . " => ")
+    ;; ("<" . key-combo-execute-orignal)
     ;; use beginning-of-buffer for keydescription
     ;; (lambda () (goto-char (point-min)))
     ("C-a"   . (back-to-indentation beginning-of-line
@@ -363,7 +364,7 @@ which in most cases is shared with all other buffers in the same major mode.
 
 (define-key-combo-load "lisp")
 
-(defvar key-combo-c-mode-hooks
+(defcustom key-combo-c-mode-hooks
   '(c-mode-common-hook
     c++-mode-hook
     php-mode-hook
@@ -371,14 +372,16 @@ which in most cases is shared with all other buffers in the same major mode.
     cperl-mode-hook
     javascript-mode-hook
     js-mode-hook
-    js2-mode-hook))
+    js2-mode-hook)
+  "Hooks that enable `key-combo-c-default' setting")
 
-(defvar key-combo-c-default
+(defcustom key-combo-c-default
   '((","  . ", ")
     ("+"  . (" + " "++"))
     ("+=" . " += ")
     ("-"  . (" - " "--"))
     ("-=" . " -= ")
+    ("->" . "->")
     (">"  . (" > " " >> "))
     (">=" . " >= ")
     ("=~" . " =~ ");;for ruby regexp
@@ -424,6 +427,21 @@ which in most cases is shared with all other buffers in the same major mode.
 
 (define-key-combo-load "html")
 
+(defcustom key-combo-functional-mode-hooks
+  '(coffee-mode-hook
+    haskell-mode-hook)
+  "Hooks that enable `key-combo-functional' setting")
+
+(defcustom key-combo-functional-default
+  '(("<-" . " <- ")
+    ("<=" . " <= ")
+    ("->" . " -> ")
+    ("=>" . " => "))
+  "Default binding which enabled by `key-combo-functional-mode-hooks'
+Note: This overwrite `key-combo-c-default'")
+
+(define-key-combo-load "functional")
+
 (defvar key-combo-org-default
   '(("C-a" . (org-beginning-of-line
              beginning-of-buffer
@@ -450,6 +468,8 @@ which in most cases is shared with all other buffers in the same major mode.
                            'key-combo-load-html-default)
   (key-combo-load-by-hooks '(org-mode-hook)
                            'key-combo-load-org-default)
+  (key-combo-load-by-hooks key-combo-functional-mode-hooks
+                           'key-combo-load-functional-default)
   )
 
 (defun key-combo-load-by-hooks (hooks func)
