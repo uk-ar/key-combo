@@ -26,7 +26,7 @@
 ;; Author: Yuuki Arisawa <yuuki.ari@gmail.com>
 ;; URL: https://github.com/uk-ar/key-combo
 ;; Created: 30 November 2011
-;; Version: 1.3
+;; Version: 1.4
 ;; Keywords: keyboard input
 
 ;;; Commentary:
@@ -53,6 +53,10 @@
 
 ;;; History:
 
+;; Revision 1.4 2012/04/03 20:15:21
+;; * Regard first key as key-combo-execute-original when first key is not assigned
+;; * Auto indent when inserting string have new line
+;;
 ;; Revision 1.3 2012/03/13 22:00:23
 ;; * Make works well for other elisp which use post command hook
 ;;
