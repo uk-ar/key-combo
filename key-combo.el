@@ -123,28 +123,7 @@ The binding is probably a symbol with a function definition."
   (call-interactively (key-binding (vector last-input-event)))
   )
 
-;; (defun key-combo-undo ()
-;;   (if (boundp 'key-combo-undo-list)
-;;       (let ((buffer-undo-list))
-;;         (primitive-undo (1+ (key-combo-count-boundary key-combo-undo-list))
-;;                         key-combo-undo-list)
-;;         ;; add-to-list?
-;;         (unless (eq buffer-undo-list t)
-;;           (setq key-combo-undo-list
-;;                 (append buffer-undo-list key-combo-undo-list))))))
-
-;; (defun key-combo-command-execute (command)
-;;   (let ((buffer-undo-list))
-;;     (cond
-;;      ((commandp command)
-;;       (call-interactively command))
-;;      (t (funcall command)))
-;;     (undo-boundary)
-;;     (if (and (boundp 'key-combo-undo-list)
-;;              (not (eq buffer-undo-list t)))
-;;         (setq key-combo-undo-list
-;;               (append buffer-undo-list key-combo-undo-list)))))
-
+;; should be replace by union
 (defun key-combo-memq (a b)
   (setq a (if (consp a) a (list a)))
   (setq b (if (consp b) b (list b)))
@@ -171,48 +150,6 @@ The binding is probably a symbol with a function definition."
 ;;(browse-url "http://q.hatena.ne.jp/1226571494")
 (defun key-combo-count-boundary (last-undo-list)
   (length (remove-if-not 'null last-undo-list)))
-
-;; (defun* key-combo (arg)
-;;   (interactive "P")
-;;   (let* ((same-key last-input-event)
-;;          (all-command-keys (vector last-input-event))
-;;          (command (key-combo-lookup all-command-keys))
-;;          (key-combo-undo-list))
-;;     (if (memq (key-binding (vector last-input-event))
-;;               '(self-insert-command skk-insert))
-;;         (progn
-;;           (key-combo-command-execute (key-binding (vector last-input-event)))
-;;           (if (key-combo-comment-or-stringp) (return-from key-combo nil))
-;;           ;; undo in first loop
-;;           ))
-;;     (key-combo-set-start-position (cons (point) (window-start)))
-;;     ;;for undo
-;;     (catch 'invalid-event
-;;       (while command
-;;         (key-combo-undo)
-;;         (key-combo-command-execute command)
-;;         (read-event)
-;;         (setq same-key
-;;               (cond ((eq key-combo-loop-option 'allways) t)
-;;                     ((eq key-combo-loop-option 'only-same-key)
-;;                      (if (eq last-input-event same-key) same-key nil))
-;;                     ((eq key-combo-loop-option 'never) nil)))
-;;         (setq all-command-keys (vconcat all-command-keys
-;;                                        (vector last-input-event)))
-;;         (setq command (key-combo-lookup all-command-keys))
-;;         (if (and (not command) same-key);;for loop
-;;             (progn;; retry
-;;               (if (eq 2 (length all-command-keys)) (throw 'invalid-event t))
-;;               (setq all-command-keys (vector last-input-event))
-;;               (setq command (key-combo-lookup all-command-keys)))))
-;;       ;;end while
-;;       );;end catch
-;;     (setq unread-command-events
-;;           (cons last-input-event unread-command-events))
-;;     (unless (eq buffer-undo-list t)
-;;       (setq buffer-undo-list (append key-combo-undo-list buffer-undo-list)))
-;;     );;end let
-;;   );;end key-combo
 
 (defun key-combo-smart-insert(string)
   (let ((p (point)))
@@ -526,16 +463,6 @@ Note: This overwrite `key-combo-c-default'")
   ;;(key-binding "C-M-x")
   (setq key-combo-command-keys nil)
   )
-
-;; (flet ((this-command-keys-vector () (vector (read-event))))
-;;   (setq unread-command-events (listify-key-sequence
-;;                                (kbd "=")))
-;;   (insert"\"")
-;;   (font-lock-fontify-buffer)
-;;   ;; (this-command-keys-vector)
-;;   (key-combo-test-command-loop)
-;;   ;; unread-command-events
-;;   )
 
 (dont-compile
   (when(fboundp 'expectations)
@@ -1071,17 +998,6 @@ Note: This overwrite `key-combo-c-default'")
                         ))))
       )))
 
-;; (defun key-combo-pre-command-function-old ()
-;;   (if (and
-;;        key-combo-mode
-;;        (not (minibufferp))
-;;        (not isearch-mode)
-;;        ;; (not skk-mode)
-;;        (key-combo-lookup (this-command-keys-vector)))
-;;       ;;(progn (message "pre")
-;;       (setq this-command 'key-combo)
-;;     ))
-
 (defun key-combo-undo ()
   "returns buffer undo list"
   ;; (message "count:%d" (1+ (key-combo-count-boundary buffer-undo-list)))
@@ -1149,9 +1065,6 @@ Note: This overwrite `key-combo-c-default'")
                             '(self-insert-command skk-insert))))
             )
            (setq this-command 'key-combo)
-           ;; execute key-combo
-           ;; (message "execute key-combo:%s:%s:u:%s"
-           ;;          (key-binding command-key-vector) command-key-vector key-combo-need-undop)
            (cond (first-timep
                   ;; first time
                   (setq key-combo-original-undo-list buffer-undo-list
