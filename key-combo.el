@@ -221,8 +221,14 @@ The binding is probably a symbol with a function definition."
         (save-excursion
           (goto-char p)
           (just-one-space)))
-    )
-  )
+    ))
+
+(defun key-combo-insert-and-indent (insert-func string)
+  (let ((p (point)))
+    (when (string-match "\n" string)
+      (funcall insert-func string)
+      (indent-according-to-mode)
+      (indent-region p (point)))))
 
 (defun key-combo-get-command(command)
   (unless (key-combo-elementp command)
@@ -233,11 +239,15 @@ The binding is probably a symbol with a function definition."
    ((not (stringp command)) nil)
    ((string-match "`!!'" command)
     (destructuring-bind (pre post) (split-string command "`!!'")
-      (lexical-let ((pre pre) (post post))
+      (lexical-let ((pre pre)
+                    (post post))
         (lambda()
-          (key-combo-smart-insert pre)
-          (save-excursion (insert post))))
-      ))
+          (key-combo-insert-and-indent 'key-combo-smart-insert
+                                       pre)
+        (save-excursion
+          (key-combo-insert-and-indent 'insert
+                                       post)
+            )))))
    (t
     (lexical-let ((command command))
       (lambda()
@@ -377,8 +387,14 @@ which in most cases is shared with all other buffers in the same major mode.
     ;; ("|"  . (" | " " || ")) ;;ruby block
     ;; ("/" . (" / " "// " "/`!!'/")) ;; devision,comment start or regexp
     ("/" . (" / " "// "))
+    ("*/" . "*/")
     ("/*" . "/* `!!' */")
-    ))
+    ("/* RET" . "/*\n`!!'\n*/");; add *? m-j
+    ;; ("/* RET" . "/*\n*`!!'\n*/");; ToDo:change style by valiable
+    ("{" . (key-combo-execute-orignal))
+    ("{ RET" . "{\n`!!'\n}")
+    )
+  "Default binding which enabled by `key-combo-c-mode-hooks'")
 
 (define-key-combo-load "c")
 
@@ -495,6 +511,23 @@ which in most cases is shared with all other buffers in the same major mode.
 (dont-compile
   (when(fboundp 'expectations)
     (expectations
+      (desc "RET")
+      (expect "/*\n *\n */"
+        (with-temp-buffer
+          ;; (buffer-enable-undo);;
+          (c-mode)
+          (setq unread-command-events (listify-key-sequence (kbd "/* RET")))
+          (key-combo-test-command-loop)
+          (buffer-string)
+          ))
+      (expect "{\n  \n}"
+        (with-temp-buffer
+          ;; (buffer-enable-undo);;
+          (c-mode)
+          (setq unread-command-events (listify-key-sequence (kbd "{ RET")))
+          (key-combo-test-command-loop)
+          (buffer-string)
+          ))
       (desc "key-combo")
       (expect nil
         (with-temp-buffer
