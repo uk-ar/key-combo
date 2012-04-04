@@ -230,12 +230,11 @@ If COMMANDS is list, treated as sequential commands.
     (unless (key-combo-elementp commands)
       (error "%s is not command" commands))
     ;; regard first key as key-combo-execute-orignal
-    (let ((first (lookup-key ;; lookup-key returns nil at first
-                  keymap
+    (let ((first (key-binding
                   (vector 'key-combo (intern (key-description base-key))))))
       (when
           (and (eq (safe-length (listify-key-sequence key)) 2)
-               (or (numberp first) (null first)))
+               (null first))
         (define-key keymap
           (vector 'key-combo (intern (key-description base-key)))
           'key-combo-execute-orignal)))
@@ -685,6 +684,15 @@ Note: This overwrite `key-combo-c-default'")
           ))
       (expect " = "
         (with-temp-buffer
+          (buffer-enable-undo)
+          (setq unread-command-events (listify-key-sequence
+                                       (kbd "=")))
+          (key-combo-test-command-loop)
+          (buffer-substring-no-properties (point-min) (point-max))
+          ))
+      (expect " = "
+        (with-temp-buffer
+          (c-mode)
           (buffer-enable-undo)
           (setq unread-command-events (listify-key-sequence
                                        (kbd "=")))
