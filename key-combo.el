@@ -26,7 +26,7 @@
 ;; Author: Yuuki Arisawa <yuuki.ari@gmail.com>
 ;; URL: https://github.com/uk-ar/key-combo
 ;; Created: 30 November 2011
-;; Version: 1.4
+;; Version: 1.4.1
 ;; Keywords: keyboard input
 
 ;;; Commentary:
@@ -53,6 +53,9 @@
 
 ;;; History:
 
+;; Revision 1.4.1 2012/04/04 21:05:48
+;; * Bug fix for first key in c-mode and other modes.
+;;
 ;; Revision 1.4 2012/04/03 20:15:21
 ;; * Regard first key as key-combo-execute-original when first key is not assigned
 ;; * Auto indent when inserting string have new line
