@@ -158,21 +158,24 @@ The binding is probably a symbol with a function definition."
 (defun key-combo-count-boundary (last-undo-list)
   (length (remove-if-not 'null last-undo-list)))
 
-(defun key-combo-smart-insert(string)
-  (let ((p (point)))
-    (insert string)
-    (if (eq ?  (aref string 0))
-        (save-excursion
-          (goto-char p)
-          (just-one-space)))
-    ))
-
-(defun key-combo-insert-and-indent (insert-func string)
-  (let ((p (point)))
-    (funcall insert-func string)
-    (when (string-match "\n" string)
-      (indent-according-to-mode)
-      (indent-region p (point)))))
+(defun key-combo-execute-macro (string)
+  (cond
+   ((string-match "`!!'" string)
+    (destructuring-bind (pre post) (split-string string "`!!'")
+      (flex-autopair-execute-macro pre)
+      (save-excursion
+        (flex-autopair-execute-macro post))
+      ))
+   (t
+    (let ((p (point)))
+      (insert string)
+      (if (eq ?  (aref string 0))
+          (save-excursion
+            (goto-char p)
+            (just-one-space)))
+      (when (string-match "\n" string)
+        (indent-according-to-mode)
+        (indent-region p (point)))))))
 
 (defun key-combo-get-command(command)
   (unless (key-combo-elementp command)
@@ -181,21 +184,10 @@ The binding is probably a symbol with a function definition."
    ((functionp command) command)
    ((listp command) command)
    ((not (stringp command)) nil)
-   ((string-match "`!!'" command)
-    (destructuring-bind (pre post) (split-string command "`!!'")
-      (lexical-let ((pre pre)
-                    (post post))
-        (lambda()
-          (key-combo-insert-and-indent 'key-combo-smart-insert
-                                       pre)
-        (save-excursion
-          (key-combo-insert-and-indent 'insert
-                                       post)
-            )))))
    (t
     (lexical-let ((command command))
       (lambda()
-        (key-combo-smart-insert command)
+        (key-combo-execute-macro command)
         )))
    );;end cond
   )
