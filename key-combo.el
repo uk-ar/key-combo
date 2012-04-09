@@ -331,7 +331,7 @@ which in most cases is shared with all other buffers in the same major mode.
     ("%"  . " % ")
     ("^"  . " ^ ");; c XOR
     ("!" . key-combo-execute-orignal) ;;not " !" because of ruby symbol
-    ("!=" . " != ")
+    ("!=" . (" != " " !== ")) ;;" !== " for js and php
     ;; (":" . " :");;only for ruby
     ;; ("&"  . (" & " " && ")) ;;not use because c pointer
     ;; ("*"  . " * " ) ;;not use because c pointer
