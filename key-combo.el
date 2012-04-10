@@ -257,20 +257,13 @@ which in most cases is shared with all other buffers in the same major mode.
   ;;(interactive "sSet key chord globally (2 keys): \nCSet chord \"%s\" to command: ")
   (key-combo-define (current-local-map) keys command))
 
-;; < { [ should map bracket command
+;; < { [ should use flex-autopair
 (defvar key-combo-global-default
-  '(("="  . (" = " " == " " === " ));;" === " for js
-    ("=>" . " => ")
-    ;; ("<" . key-combo-execute-orignal)
+  '(;; instead of using (goto-char (point-min))
     ;; use beginning-of-buffer for keydescription
-    ;; (lambda () (goto-char (point-min)))
-    ("C-a"   . (back-to-indentation beginning-of-line
+    ("C-a"   . (back-to-indentation move-beginning-of-line
                                   beginning-of-buffer key-combo-return))
-    ("C-e"   . (end-of-line end-of-buffer key-combo-return))
-    ("C-M-x" . (key-combo-execute-orignal
-                (lambda ()
-                  (let ((current-prefix-arg '(4)))
-                    (call-interactively 'eval-defun)))))
+    ("C-e"   . (move-end-of-line end-of-buffer key-combo-return))
     ))
 
 (defvar key-combo-lisp-default
@@ -280,7 +273,11 @@ which in most cases is shared with all other buffers in the same major mode.
     (";"  . (";; " ";;; " "; "))
     ("="  . ("= " "eq " "equal "))
     (">=" . ">= ")
-    ;; ("-" . self-insert-command)
+    ("C-M-x" . (key-combo-execute-orignal
+                (lambda ()
+                  (let ((current-prefix-arg '(4)))
+                    (call-interactively 'eval-defun)))));; lamda for message
+    ("-"  . (key-combo-execute-orignal));; for self insert
     ;; ("/" . ("/`!!'/" "/* `!!' */") );;for regexp, comment
     ))
 
