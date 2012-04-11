@@ -297,6 +297,7 @@ which in most cases is shared with all other buffers in the same major mode.
        (key-combo-define-local (read-kbd-macro (car key)) (cdr key)))
      ))
 
+;; for algol like language
 (defcustom key-combo-common-mode-hooks
   '(c-mode-common-hook
     php-mode-hook
@@ -316,7 +317,7 @@ which in most cases is shared with all other buffers in the same major mode.
     ("+=" . " += ")
     ("-"  . (" - " "--"))
     ("-=" . " -= ")
-    ("->" . "->")
+    ("->" . " -> ")
     (">"  . (" > " " >> "))
     (">=" . " >= ")
     ("=~" . " =~ ");;for ruby regexp
@@ -329,8 +330,7 @@ which in most cases is shared with all other buffers in the same major mode.
     ;; ("&"  . (" & " " && ")) ;;not use because c pointer
     ;; ("*"  . " * " ) ;;not use because c pointer
     ("?" . "? ");; for ternary operator
-    ;; ("<"  . (" < " " << "));; not use because of c include
-    ("<" . (key-combo-execute-orignal " << "))
+    ("<" . (key-combo-execute-orignal " << "));; " < " should be bind in flex-autopair
     ("<=" . " <= ")
     ("<-" . " <- ")
     ;; ("|"  . (" | " " || ")) ;;ruby block
@@ -386,23 +386,44 @@ Note: This overwrite `key-combo-common-default'")
   (key-combo-mode 1)
   (key-combo-load-default-1 (current-global-map)
                             key-combo-global-default)
-  (key-combo-load-by-hooks key-combo-lisp-mode-hooks
-                           (define-key-combo-load "lisp"))
-  (key-combo-load-by-hooks key-combo-common-hooks
-                           (define-key-combo-load "common"))
-  (key-combo-load-by-hooks '(objc-mode-hook)
-                           (define-key-combo-load "objc"))
+  (key-combo-load-by-hooks2 key-combo-common-mode-hooks
+                            'key-combo-common-load-default
+                            key-combo-common-default)
+  (key-combo-load-by-hooks2 key-combo-lisp-mode-hooks
+                            'key-combo-lisp-load-default
+                            key-combo-lisp-default)
+  (key-combo-load-by-hooks2 '(org-mode-hook)
+                            'key-combo-org-load-default
+                            key-combo-org-default)
+  (key-combo-load-by-hooks2 'objc-mode-hook
+                            'key-combo-objc-load-default
+                            (append key-combo-pointer-default
+                                    key-combo-objc-default))
+  (key-combo-load-by-hooks2 '(c-mode-hook c++-mode-hook)
+                            'key-combo-pointer-load-default
+                            key-combo-pointer-default)
   (key-combo-load-by-hooks key-combo-html-mode-hooks
-                           (define-key-combo-load "html"))
+                           (key-combo-define-hook "html"))
   (key-combo-load-by-hooks '(org-mode-hook)
-                           (define-key-combo-load "org"))
+                           (key-combo-define-hook "org"))
   (key-combo-load-by-hooks key-combo-functional-mode-hooks
                            'key-combo-load-functional-default)
   )
+;; (key-combo-load-default)
+(defmacro key-combo-load-by-hooks2 (hooks name keys)
+  `(progn
+     (defun ,(nth 1 name) ()
+       (key-combo-load-default-1 (current-local-map) ,keys)
+       )
+     (key-combo-load-by-hooks ,hooks ,name)
+     ))
 
+;; hooks function-name keys
 (defun key-combo-load-by-hooks (hooks func)
-  (dolist (hook hooks)
-      (add-hook hook func)))
+  (let ((hooks (if (consp hooks) hooks (list hooks))))
+    (dolist (hook hooks)
+      (add-hook hook func))
+      ))
 
 (defun key-combo-load-default-1 (map keys)
   (dolist (key keys)
@@ -1017,7 +1038,8 @@ Note: This overwrite `key-combo-common-default'")
 (defvar key-combo-need-undop t)
 
 (defun key-combo ()
-  ;; (message "keys:%s: nu:%s" key-combo-command-keys key-combo-need-undop)
+  ;; because of prefix arg
+  (interactive)
   (let ((command (key-combo-lookup key-combo-command-keys)))
     (if (and key-combo-need-undop
              (not (eq buffer-undo-list t)))
