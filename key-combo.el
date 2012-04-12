@@ -452,6 +452,7 @@ Note: This overwrite `key-combo-common-default'")
 
 (defun key-combo-test-command-loop ()
   ;; (key-combo-finalize)
+  (font-lock-fontify-buffer)
   (setq last-command nil)
   ;; (setq last-command 'self-insert-command)
   (while unread-command-events
@@ -691,7 +692,7 @@ Note: This overwrite `key-combo-common-default'")
           (key-combo-test-command-loop)
           (buffer-substring-no-properties (point-min) (point-max))
           ))
-      (expect " = "
+      (expect "="
         (with-temp-buffer
           (buffer-enable-undo)
           (setq unread-command-events (listify-key-sequence
@@ -710,6 +711,7 @@ Note: This overwrite `key-combo-common-default'")
           ))
       (expect " = *"
         (with-temp-buffer
+          (c-mode)
           (buffer-enable-undo)
           (setq unread-command-events (listify-key-sequence
                                        (kbd "=*")))
@@ -719,6 +721,7 @@ Note: This overwrite `key-combo-common-default'")
       (desc "sequence")
       (expect " == "
         (with-temp-buffer
+          (c-mode)
           (buffer-enable-undo)
           (setq unread-command-events (listify-key-sequence
                                        (kbd "==")))
@@ -727,6 +730,7 @@ Note: This overwrite `key-combo-common-default'")
           ))
       (expect " => "
         (with-temp-buffer
+          (c-mode)
           (buffer-enable-undo);;todo remove
           (setq unread-command-events (listify-key-sequence
                                        (kbd "=>")))
@@ -735,6 +739,7 @@ Note: This overwrite `key-combo-common-default'")
           ))
       (expect " === "
         (with-temp-buffer
+          (c-mode)
           (buffer-enable-undo);;todo remove
           (setq unread-command-events (listify-key-sequence
                                        (kbd "===")))
@@ -891,7 +896,7 @@ Note: This overwrite `key-combo-common-default'")
       (desc "undo")
       (expect "="
         (with-temp-buffer
-          (message "undo")
+          (c-mode)
           (buffer-enable-undo)
           (setq this-command 'self-insert-command)
           (setq unread-command-events (listify-key-sequence "="))
@@ -901,6 +906,7 @@ Note: This overwrite `key-combo-common-default'")
           ))
       (expect " = "
         (with-temp-buffer
+          (c-mode)
           (buffer-enable-undo);;
           (setq unread-command-events (listify-key-sequence "=="))
           (setq this-command 'self-insert-command)
@@ -911,6 +917,7 @@ Note: This overwrite `key-combo-common-default'")
       (desc "loop")
       (expect " = "
         (with-temp-buffer
+          (c-mode)
           (buffer-enable-undo);;
           (setq unread-command-events (listify-key-sequence "===="))
           (key-combo-test-command-loop)
@@ -918,6 +925,7 @@ Note: This overwrite `key-combo-common-default'")
           ))
       (expect " => = "
         (with-temp-buffer
+          (c-mode)
           (buffer-enable-undo);;
           (setq unread-command-events (listify-key-sequence "=>="))
           (key-combo-test-command-loop)
@@ -926,22 +934,26 @@ Note: This overwrite `key-combo-common-default'")
       (desc "key-combo-lookup")
       (expect " = "
         (with-temp-buffer
+          (c-mode)
           (funcall
            (key-combo-lookup "="))
           (buffer-string)))
       (expect " == "
         (with-temp-buffer
+          (c-mode)
           (funcall
            (key-combo-lookup "=="))
           (buffer-string)))
       (expect " == "
         (with-temp-buffer
+          (c-mode)
           (key-combo-define-global (kbd "C-M-h") " == ")
           (funcall
            (key-combo-lookup (kbd "C-M-h")))
           (buffer-string)))
       (expect " === "
         (with-temp-buffer
+          (c-mode)
           (key-combo-define-global (kbd "C-M-h C-M-h") " === ")
           (buffer-enable-undo)
           (setq unread-command-events
@@ -950,27 +962,32 @@ Note: This overwrite `key-combo-common-default'")
           (buffer-string)))
       (expect " === "
         (with-temp-buffer
+          (c-mode)
           (key-combo-define-global (kbd "C-M-h C-M-h") " === ")
           (funcall
            (key-combo-lookup (kbd "C-M-h C-M-h")))
           (buffer-string)))
       (expect " = "
         (with-temp-buffer
+          (c-mode)
           (funcall
            (key-combo-lookup [?=]))
           (buffer-string)))
       (expect " == "
         (with-temp-buffer
+          (c-mode)
           (funcall
            (key-combo-lookup [?= ?=]))
           (buffer-string)))
       (expect " => "
         (with-temp-buffer
+          (c-mode)
           (funcall
            (key-combo-lookup [?= ?>]))
           (buffer-string)))
       (expect " === "
         (with-temp-buffer
+          (c-mode)
           (funcall
            (key-combo-lookup [?= ?= ?=]))
           (buffer-string)))
