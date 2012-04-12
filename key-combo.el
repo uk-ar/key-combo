@@ -149,10 +149,18 @@ The binding is probably a symbol with a function definition."
     font-lock-comment-delimiter-face))
 
 (defun key-combo-comment-or-stringp ()
-  (setq pos (if (or (bobp) (bolp)) (point) (1- (point))))
-  (if (key-combo-memq (get-text-property pos 'face) key-combo-disable-faces)
-      t nil)
-  )
+  ;; get-text-property have a bug in eob and eolp
+  ;; (if (not (eolp))
+  ;;     (if (key-combo-memq
+  ;;          (get-text-property (- (point) 1) 'face) key-combo-disable-faces)
+  ;;         t nil)
+  (insert " ")
+  (font-lock-fontify-buffer)
+  (prog1 (if (key-combo-memq
+              (get-text-property (- (point) 1) 'face) key-combo-disable-faces)
+             t nil)
+   	(delete-backward-char 1)
+    ));; )
 
 ;;(browse-url "http://q.hatena.ne.jp/1226571494")
 (defun key-combo-count-boundary (last-undo-list)
@@ -477,7 +485,65 @@ which in most cases is shared with all other buffers in the same major mode.
 (dont-compile
   (when(fboundp 'expectations)
     (expectations
-      (desc "RET")
+      (expect "\"\" . \n"
+        (with-temp-buffer
+          (emacs-lisp-mode)
+          (insert "\"\"\n")
+          (goto-char 3)
+          (setq unread-command-events (listify-key-sequence (kbd ".")))
+          (key-combo-test-command-loop)
+          (buffer-substring-no-properties (point-min) (point-max))
+          ))
+      (expect "\"\" . a"
+        (with-temp-buffer
+          (emacs-lisp-mode)
+          (insert "\"\"a")
+          (goto-char 3)
+          (setq unread-command-events (listify-key-sequence (kbd ".")))
+          (key-combo-test-command-loop)
+          (buffer-substring-no-properties (point-min) (point-max))
+          ))
+      (expect "\"\" . "
+        (with-temp-buffer
+          (emacs-lisp-mode)
+          (insert "\"\"")
+          (setq unread-command-events (listify-key-sequence (kbd ".")))
+          (key-combo-test-command-loop)
+          (buffer-substring-no-properties (point-min) (point-max))
+          ))
+      (expect "\".\""
+        (with-temp-buffer
+          (emacs-lisp-mode)
+          (insert "\"\"")
+          (goto-char 2)
+          (setq unread-command-events (listify-key-sequence (kbd ".")))
+          (key-combo-test-command-loop)
+          (buffer-substring-no-properties (point-min) (point-max))
+          ))
+      (expect "a . \"\""
+        (with-temp-buffer
+          (emacs-lisp-mode)
+          (insert "a\"\"")
+          (goto-char 2)
+          (setq unread-command-events (listify-key-sequence (kbd ".")))
+          (key-combo-test-command-loop)
+          (buffer-string)
+          ))
+      (expect "*"
+        (with-temp-buffer
+          (c-mode)
+          (setq unread-command-events (listify-key-sequence (kbd "*")))
+          (key-combo-test-command-loop)
+          (buffer-string)
+          ))
+      (expect "->"
+        (with-temp-buffer
+          (c-mode)
+          (setq unread-command-events (listify-key-sequence (kbd "->")))
+          (key-combo-test-command-loop)
+          (buffer-string)
+          ))
+    (desc "RET")
       (expect "/*\n  \n */"
         (with-temp-buffer
           ;; (buffer-enable-undo);;
