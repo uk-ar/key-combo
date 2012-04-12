@@ -271,13 +271,14 @@ which in most cases is shared with all other buffers in the same major mode.
     (","  . (key-combo-execute-orignal))
     (",@" . " ,@");; for macro
     (";"  . (";; " ";;; " "; "))
+    (";=" . ";=> ")
     ("="  . ("= " "eq " "equal "))
     (">=" . ">= ")
     ("C-M-x" . (key-combo-execute-orignal
                 (lambda ()
                   (let ((current-prefix-arg '(4)))
                     (call-interactively 'eval-defun)))));; lamda for message
-    ("-"  . (key-combo-execute-orignal));; for self insert
+    ("-"  . (key-combo-execute-orignal));; for symbol name
     ;; ("/" . ("/`!!'/" "/* `!!' */") );;for regexp, comment
     ))
 
@@ -288,10 +289,8 @@ which in most cases is shared with all other buffers in the same major mode.
     inferior-gauche-mode-hook
     scheme-mode-hook))
 
-(defalias 'define-key-combo-load 'key-combo-define-hook
-  "define-key-combo-load is deprecated")
-
-(defmacro key-combo-define-hook (name)
+(defmacro define-key-combo-load (name)
+  "define-key-combo-load is deprecated"
   `(defun ,(intern (concat "key-combo-load-" name "-default")) ()
      (dolist (key ,(intern (concat "key-combo-" name "-default")))
        (key-combo-define-local (read-kbd-macro (car key)) (cdr key)))
@@ -299,7 +298,7 @@ which in most cases is shared with all other buffers in the same major mode.
 
 ;; for algol like language
 (defcustom key-combo-common-mode-hooks
-  '(c-mode-common-hook
+  '(c-mode-common-hook;; It's run immediately before the language specific hook.
     php-mode-hook
     ruby-mode-hook
     cperl-mode-hook
@@ -317,25 +316,40 @@ which in most cases is shared with all other buffers in the same major mode.
     ("+=" . " += ")
     ("-"  . (" - " "--"))
     ("-=" . " -= ")
-    ("->" . " -> ")
-    (">"  . (" > " " >> "))
+    ("->" . " -> ");; for haskell,coffee script. overwrite in c
+    (">"  . (key-combo-execute-orignal " >> "))
+    ;; " > " should be bind in flex-autopair
     (">=" . " >= ")
     ("=~" . " =~ ");;for ruby regexp
     ("%"  . " % ")
-    ("^"  . " ^ ");; c XOR
-    ("!" . key-combo-execute-orignal) ;;not " !" because of ruby symbol
+    ("^"  . " ^ ");; XOR for c
+    ("^="  . " ^= ");; for c
+    ("!" . key-combo-execute-orignal)
+    ;; NOT for c
+    ;; don't use " !" because of ruby symbol
     ("!=" . (" != " " !== ")) ;;" !== " for js and php
     ("!==" . " !== ") ;;" !== " for js and php
-    ;; (":" . " :");;only for ruby
-    ;; ("&"  . (" & " " && ")) ;;not use because c pointer
-    ;; ("*"  . " * " ) ;;not use because c pointer
-    ("?" . "? ");; for ternary operator
-    ("<" . (key-combo-execute-orignal " << "));; " < " should be bind in flex-autopair
+    ("::" . " :: ") ;; for haskell
+    ;; (":" . ":");;for ruby symbol
+    ("&"  . (" & " " && "))             ;overwrite in c
+    ("&=" . " &= ");; for c
+    ("*"  . " * " )                     ;overwrite in c
+    ("*="  . " *= " )
+    ;; ("?" . "? `!!' :"); ternary operator should be bound in yasnippet?
+    ;; ("?=");; for coffeescript?
+    ("<" . (key-combo-execute-orignal " << "))
+    ;; " < " should be bound in flex-autopair
     ("<=" . " <= ")
+    ;; ("<?" . "<?`!!'?>");; for what?
+    ("<<=" . " <<= ");; bit shift for c
     ("<-" . " <- ")
-    ;; ("|"  . (" | " " || ")) ;;ruby block
+    ("<!" . "<!-- `!!' -->");; for html comment
+    ("|"  . (" | " " || "));; bit OR and OR for c
+    ;;ToDo: ruby block
+    ("|=" . " |= ");; for c
     ;; ("/" . (" / " "// " "/`!!'/")) ;; devision,comment start or regexp
     ("/" . (" / " "// "))
+    ("/=" . " /= ")
     ("*/" . "*/")
     ("/*" . "/* `!!' */")
     ("/* RET" . "/*\n`!!'\n*/");; add *? m-j
@@ -344,26 +358,6 @@ which in most cases is shared with all other buffers in the same major mode.
     ("{ RET" . "{\n`!!'\n}")
     )
   "Default binding which enabled by `key-combo-common-mode-hooks'")
-
-(defvar key-combo-objc-default
-  '(("@"  . "@\"`!!'\"")))
-
-(defvar key-combo-html-mode-hooks
-  '(html-mode-hook
-    css-mode-hook))
-
-(defvar key-combo-html-default
-  '((":"  . ": ")))
-
-(defcustom key-combo-functional-mode-hooks
-  '(coffee-mode-hook
-    haskell-mode-hook)
-  "Hooks that enable `key-combo-functional' setting")
-
-(defcustom key-combo-functional-default
-  '(("->" . " -> "))
-  "Default binding which enabled by `key-combo-functional-mode-hooks'
-Note: This overwrite `key-combo-common-default'")
 
 (defvar key-combo-org-default
   '(("C-a" . (org-beginning-of-line
@@ -375,8 +369,8 @@ Note: This overwrite `key-combo-common-default'")
     ))
 
 (defcustom key-combo-pointer-default
-  '(("*" . '("*" "**" "***"))
-    ("&" . '("&" "&&" "&&&"))
+  '(("*" . ("*" "**" "***"))
+    ("&" . ("&" "&&" "&&&"))
     ("->" . "->"))
   "Default binding for c-mode,c++-mode,objc-mode"
   )
@@ -386,43 +380,46 @@ Note: This overwrite `key-combo-common-default'")
   (key-combo-mode 1)
   (key-combo-load-default-1 (current-global-map)
                             key-combo-global-default)
-  (key-combo-load-by-hooks2 key-combo-common-mode-hooks
-                            'key-combo-common-load-default
-                            key-combo-common-default)
-  (key-combo-load-by-hooks2 key-combo-lisp-mode-hooks
-                            'key-combo-lisp-load-default
-                            key-combo-lisp-default)
-  (key-combo-load-by-hooks2 '(org-mode-hook)
-                            'key-combo-org-load-default
-                            key-combo-org-default)
-  (key-combo-load-by-hooks2 'objc-mode-hook
-                            'key-combo-objc-load-default
-                            (append key-combo-pointer-default
-                                    key-combo-objc-default))
-  (key-combo-load-by-hooks2 '(c-mode-hook c++-mode-hook)
-                            'key-combo-pointer-load-default
-                            key-combo-pointer-default)
-  (key-combo-load-by-hooks key-combo-html-mode-hooks
-                           (key-combo-define-hook "html"))
-  (key-combo-load-by-hooks '(org-mode-hook)
-                           (key-combo-define-hook "org"))
-  (key-combo-load-by-hooks key-combo-functional-mode-hooks
-                           'key-combo-load-functional-default)
+  (key-combo-define-hook key-combo-common-mode-hooks
+                         'key-combo-common-load-default
+                         key-combo-common-default)
+  (key-combo-define-hook key-combo-lisp-mode-hooks
+                           'key-combo-lisp-load-default
+                           key-combo-lisp-default)
+  (key-combo-define-hook '(c-mode-hook c++-mode-hook)
+                         'key-combo-pointer-load-default
+                         key-combo-pointer-default)
+  (key-combo-define-hook 'objc-mode-hook
+                         'key-combo-objc-load-default
+                         (append key-combo-pointer-default
+                                 '(("@"  . "@\"`!!'\""))))
+  (key-combo-define-hook 'org-mode-hook
+                         'key-combo-org-load-default
+                         key-combo-org-default)
+  (key-combo-define-hook '(html-mode-hook
+                           css-mode-hook
+                           javascript-mode-hook
+                           js-mode-hook
+                           makefile-mode-hook
+                           js2-mode-hook)
+                         'key-combo-property-default
+                         '((":"  . ": ")))
+  ;; align is better for property?
   )
-;; (key-combo-load-default)
-(defmacro key-combo-load-by-hooks2 (hooks name keys)
-  `(progn
-     (defun ,(nth 1 name) ()
-       (key-combo-load-default-1 (current-local-map) ,keys)
-       )
-     (key-combo-load-by-hooks ,hooks ,name)
-     ))
+
+(defmacro key-combo-define-hook (hooks name keys)
+    `(progn
+       (defun ,(nth 1 name) ()
+         (key-combo-load-default-1 (current-local-map) ,keys)
+         )
+       (key-combo-load-by-hooks ,hooks ,name)
+       ))
 
 ;; hooks function-name keys
 (defun key-combo-load-by-hooks (hooks func)
   (let ((hooks (if (consp hooks) hooks (list hooks))))
     (dolist (hook hooks)
-      (add-hook hook func))
+      (add-hook hook func t))
       ))
 
 (defun key-combo-load-default-1 (map keys)
