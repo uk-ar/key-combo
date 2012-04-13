@@ -383,6 +383,16 @@ which in most cases is shared with all other buffers in the same major mode.
   "Default binding for c-mode,c++-mode,objc-mode"
   )
 
+;;;###autoload
+(defmacro key-combo-define-hook (hooks name keys)
+    `(progn
+       (defun ,(nth 1 name) ()
+         (key-combo-load-default-1 (current-local-map) ,keys)
+         )
+       (key-combo-load-by-hooks ,hooks ,name)
+       ))
+
+;;;###autoload
 (defun key-combo-load-default ()
   (interactive)
   (key-combo-mode 1)
@@ -414,14 +424,6 @@ which in most cases is shared with all other buffers in the same major mode.
                          '((":"  . ": ")))
   ;; align is better for property?
   )
-
-(defmacro key-combo-define-hook (hooks name keys)
-    `(progn
-       (defun ,(nth 1 name) ()
-         (key-combo-load-default-1 (current-local-map) ,keys)
-         )
-       (key-combo-load-by-hooks ,hooks ,name)
-       ))
 
 ;; hooks function-name keys
 (defun key-combo-load-by-hooks (hooks func)
