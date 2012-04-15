@@ -157,7 +157,7 @@ The binding is probably a symbol with a function definition."
   (nth 4 (parse-partial-sexp (point) (point-min))))
 
 (defun key-combo-comment-or-stringp ()
-  (or (key-combo-in-string-p) (key-combo-in-comment-p)))
+  (or (key-combo-in-stringp) (key-combo-in-commentp)))
 
 ;;(browse-url "http://q.hatena.ne.jp/1226571494")
 (defun key-combo-count-boundary (last-undo-list)
