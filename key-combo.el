@@ -148,19 +148,18 @@ The binding is probably a symbol with a function definition."
     font-lock-string-face
     font-lock-comment-delimiter-face))
 
+;; From context-skk.el
+;; http://openlab.ring.gr.jp/skk/skk/main/context-skk.el
+(defun key-combo-in-stringp ()
+  (nth 3 (parse-partial-sexp (point) (point-min))))
+
+(defun key-combo-in-commentp ()
+  (nth 4 (parse-partial-sexp (point) (point-min))))
+
 (defun key-combo-comment-or-stringp ()
-  ;; get-text-property have a bug in eob and eolp
-  ;; (if (not (eolp))
-  ;;     (if (key-combo-memq
-  ;;          (get-text-property (- (point) 1) 'face) key-combo-disable-faces)
-  ;;         t nil)
-  (insert " ")
-  (font-lock-fontify-buffer)
-  (prog1 (if (key-combo-memq
-              (get-text-property (- (point) 1) 'face) key-combo-disable-faces)
-             t nil)
-   	(delete-backward-char 1)
-    ));; )
+  (if (or (key-combo-in-stringp) (key-combo-in-commentp))
+      t
+    nil))
 
 ;;(browse-url "http://q.hatena.ne.jp/1226571494")
 (defun key-combo-count-boundary (last-undo-list)
