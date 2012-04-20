@@ -26,7 +26,7 @@
 ;; Author: Yuuki Arisawa <yuuki.ari@gmail.com>
 ;; URL: https://github.com/uk-ar/key-combo
 ;; Created: 30 November 2011
-;; Version: 1.4.1
+;; Version: 1.5
 ;; Keywords: keyboard input
 
 ;;; Commentary:
@@ -53,6 +53,10 @@
 
 ;;; History:
 
+;; Revision 1.5 2012/04/20 22:24:26
+;; * Bug fix when just after string.
+;; * Change some default settings.
+;;
 ;; Revision 1.4.1 2012/04/04 21:05:48
 ;; * Bug fix for first key in c-mode and other modes.
 ;;
