@@ -142,12 +142,6 @@ The binding is probably a symbol with a function definition."
      (lambda (x) (if (memq x b) (list x) nil))
      a))))
 
-(defvar key-combo-disable-faces
-  '(font-lock-comment-face
-    font-lock-doc-face
-    font-lock-string-face
-    font-lock-comment-delimiter-face))
-
 ;; From context-skk.el
 ;; http://openlab.ring.gr.jp/skk/skk/main/context-skk.el
 (defun key-combo-in-stringp ()
