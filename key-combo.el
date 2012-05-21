@@ -313,33 +313,44 @@ which in most cases is shared with all other buffers in the same major mode.
     )
   "Hooks that enable `key-combo-common-default' setting")
 
+;; (browse-url "http://bojovs.github.com/2012/04/24/ruby-coding-style/")
 (defcustom key-combo-common-default
   '((","  . ", ")
     ("="  . (" = " " == " " === " ));;" === " for js
     ("=>" . " => ")
+    ("=~" . " =~ ");;for ruby regexp
+    ("=*" . " =* ")
     ("+"  . (" + " "++"))
     ("+=" . " += ")
-    ("-"  . (" - " "--"))
+    ("-"  . (" - " "--"));undo when unary operator
     ("-=" . " -= ")
     ("->" . " -> ");; for haskell,coffee script. overwrite in c
     (">"  . (key-combo-execute-orignal " >> "))
     ;; " > " should be bind in flex-autopair
     (">=" . " >= ")
-    ("=~" . " =~ ");;for ruby regexp
+    (">>=" . " >>= ")
     ("%"  . " % ")
+    ("%="  . " %= ")
     ("^"  . " ^ ");; XOR for c
     ("^="  . " ^= ");; for c
     ("!" . key-combo-execute-orignal)
     ;; NOT for c
     ;; don't use " !" because of ruby symbol
-    ("!=" . (" != " " !== ")) ;;" !== " for js and php
+    ;; and unary operator
+    ("!="  . " != " ) ;;" !== " for js and php
     ("!==" . " !== ") ;;" !== " for js and php
+    ("!~" . " !~ ")   ; for ruby
+    ("~" . key-combo-execute-orignal)
+    ;; for unary operator
     ("::" . " :: ") ;; for haskell
     ;; (":" . ":");;for ruby symbol
     ("&"  . (" & " " && "))             ;overwrite in c
     ("&=" . " &= ");; for c
+    ("&&=" . " &&= ")                   ; for ruby
     ("*"  . " * " )                     ;overwrite in c
     ("*="  . " *= " )
+    ("**"  . "**" )                     ;for power
+    ("**=" . " **=" )                     ;for power
     ;; ("?" . "? `!!' :"); ternary operator should be bound in yasnippet?
     ;; ("?=");; for coffeescript?
     ("<" . (key-combo-execute-orignal " << "))
@@ -352,6 +363,7 @@ which in most cases is shared with all other buffers in the same major mode.
     ("|"  . (" | " " || "));; bit OR and OR for c
     ;;ToDo: ruby block
     ("|=" . " |= ");; for c
+    ("||=" . " ||= ")                   ; for ruby
     ;; ("/" . (" / " "// " "/`!!'/")) ;; devision,comment start or regexp
     ("/" . (" / " "// "))
     ("/=" . " /= ")
@@ -481,9 +493,27 @@ which in most cases is shared with all other buffers in the same major mode.
   (setq key-combo-command-keys nil)
   )
 
+(defun key-combo-test-command (mode command)
+  (with-temp-buffer
+    (funcall mode)
+    (setq unread-command-events (listify-key-sequence (read-kbd-macro command)))
+    (key-combo-test-command-loop)
+    (buffer-substring-no-properties (point-min) (point-max))
+  ))
+
 (dont-compile
   (when(fboundp 'expectations)
     (expectations
+      (expect ".."
+        (key-combo-test-command 'ruby-mode ".."))
+      (expect "..."
+        (key-combo-test-command 'ruby-mode "..."))
+      (expect " !~ "
+        (key-combo-test-command 'ruby-mode "!~"))
+      (expect "**"
+        (key-combo-test-command 'ruby-mode "**"))
+      (expect " ||= "
+        (key-combo-test-command 'ruby-mode "||="))
       (expect "\"\" . \n"
         (with-temp-buffer
           (emacs-lisp-mode)
@@ -771,7 +801,7 @@ which in most cases is shared with all other buffers in the same major mode.
           (key-combo-test-command-loop)
           (buffer-substring-no-properties (point-min) (point-max))
           ))
-      (expect " = *"
+      (expect " =* "
         (with-temp-buffer
           (c-mode)
           (buffer-enable-undo)
