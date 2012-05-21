@@ -131,7 +131,7 @@ The binding is probably a symbol with a function definition."
 
 (defun key-combo-execute-orignal ()
   (interactive)
-  (call-interactively (key-binding (vector last-input-event)))
+  (call-interactively (key-binding (this-command-keys-vector)))
   )
 
 ;; should be replace by union
