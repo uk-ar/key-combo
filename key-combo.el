@@ -1258,6 +1258,15 @@ which in most cases is shared with all other buffers in the same major mode.
 ;; filter for inside string ""
 ;; filter for inside comment ;;
 
+;; copy from terminal
+;; xterm
+;; http://ttssh2.sourceforge.jp/manual/ja/usage/tips/vim.html
+;; http://d.hatena.ne.jp/guyon/20090224/1235485381
+;; Bracketed Paste Mode
+;; http://togetter.com/li/289305
+;; http://www.bookshelf.jp/texi/elisp-manual/21-2-8/jp/elisp_40.html#SEC654
+;; http://shyouhei.tumblr.com/post/63240207/pos-command-hook
+
 ;; support lamda func
 (provide 'key-combo)
 ;;; key-combo.el ends here
