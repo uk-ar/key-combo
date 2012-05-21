@@ -167,9 +167,9 @@ The binding is probably a symbol with a function definition."
   (cond
    ((string-match "`!!'" string)
     (destructuring-bind (pre post) (split-string string "`!!'")
-      (flex-autopair-execute-macro pre)
+      (key-combo-execute-macro pre)
       (save-excursion
-        (flex-autopair-execute-macro post))
+        (key-combo-execute-macro post))
       ))
    (t
     (let ((p (point)))
