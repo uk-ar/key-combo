@@ -26,7 +26,7 @@
 ;; Author: Yuuki Arisawa <yuuki.ari@gmail.com>
 ;; URL: https://github.com/uk-ar/key-combo
 ;; Created: 30 November 2011
-;; Version: 1.5
+;; Version: 1.5.1
 ;; Keywords: keyboard input
 
 ;;; Commentary:
@@ -53,6 +53,9 @@
 
 ;;; History:
 
+;; Revision 1.5.1 2012/06/06 21:36:28
+;; * Bug fix which use flex-autopair by mistake.
+;;
 ;; Revision 1.5 2012/04/20 22:24:26
 ;; * Bug fix when just after string.
 ;; * Change some default settings.
