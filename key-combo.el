@@ -176,11 +176,10 @@ The binding is probably a symbol with a function definition."
       ))
    (t
     (let ((p (point)))
+      (if (and (eq ?  (char-before))
+               (eq ?  (aref string 0)))
+          (delete-backward-char 1))
       (insert string)
-      (if (eq ?  (aref string 0))
-          (save-excursion
-            (goto-char p)
-            (just-one-space)))
       (when (string-match "\n" string)
         (indent-according-to-mode)
         (indent-region p (point)))))))
