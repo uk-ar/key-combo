@@ -406,7 +406,7 @@ which in most cases is shared with all other buffers in the same major mode.
 ;;;###autoload
 (defun key-combo-load-default ()
   (interactive)
-  (key-combo-mode 1)
+  (global-key-combo-mode t)
   (key-combo-load-default-1 (current-global-map)
                             key-combo-global-default)
   (key-combo-define-hook key-combo-common-mode-hooks
@@ -1249,6 +1249,25 @@ which in most cases is shared with all other buffers in the same major mode.
     (remove-hook 'pre-command-hook
                  #'key-combo-pre-command-function))
   )
+
+(defcustom key-combo-disable-modes nil
+  "Major modes `key-combo-mode' can not run on.")
+
+;; copy from auto-complete-mode-maybe
+(defun key-combo-mode-maybe ()
+  "What buffer `key-combo-mode' prefers."
+  (when (and (not (minibufferp (current-buffer)))
+             (not (memq major-mode key-combo-disable-modes))
+             (key-combo-mode 1)
+             ;; (key-combo-setup)
+             )))
+
+;; copy from global-auto-complete-mode
+;;;###autoload
+(define-global-minor-mode global-key-combo-mode
+  key-combo-mode key-combo-mode-maybe
+  ;; :init-value t bug?
+  :group 'key-combo)
 
 ;; (listify-key-sequence
 ;;  (kbd "M-C-d M-C-d"))
