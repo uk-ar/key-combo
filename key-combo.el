@@ -506,6 +506,14 @@ which in most cases is shared with all other buffers in the same major mode.
 (dont-compile
   (when(fboundp 'expectations)
     (expectations
+      (expect "a  = "
+        (with-temp-buffer
+          (c-mode)
+          (insert "a  ")
+          (setq unread-command-events (listify-key-sequence (kbd "=")))
+          (key-combo-test-command-loop)
+          (buffer-substring-no-properties (point-min) (point-max))
+          ))
       (expect ".."
         (key-combo-test-command 'ruby-mode ".."))
       (expect "..."
