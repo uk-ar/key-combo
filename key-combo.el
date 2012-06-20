@@ -1236,6 +1236,123 @@ which in most cases is shared with all other buffers in the same major mode.
              ))
           )))
 
+(dont-compile
+  (when (fboundp 'describe)
+    (shared-context ("execute" :vars (cmd))
+      (before
+       (execute-kbd-macro (read-kbd-macro cmd))
+       (setq buffer-string
+             (buffer-substring-no-properties (point-min) (point-max)))
+       ))
+
+    (shared-context ("insert & execute" :vars (pre-string))
+      (before
+       (insert pre-string))
+      (include-context "execute")
+      )
+
+    (shared-context ("insert & move & execute" :vars (pos pre-string))
+      (before
+       (insert pre-string)
+       (goto-char pos))
+      (include-context "execute")
+      )
+
+    (describe "key-combo"
+      (context ("in temp-buffer" :vars ((mode)))
+        (around
+         (with-temp-buffer
+           (switch-to-buffer (current-buffer))
+           (if mode (funcall mode))
+           (let ((buffer-string))
+             (funcall el-spec:example)))
+         (setq key-combo-command-keys nil))
+
+        (it ()
+          (key-combo-mode 1)
+          (should (memq 'key-combo-pre-command-function pre-command-hook)))
+        (it ()
+          (key-combo-mode -1)
+          (should-not (memq 'key-combo-pre-command-function pre-command-hook)))
+
+        (context ("in emacs-lisp-mode" :vars ((mode 'emacs-lisp-mode)))
+          (it ()
+            (key-combo-mode 1)
+            (should (memq 'key-combo-pre-command-function pre-command-hook)))
+          (it ()
+            (key-combo-mode -1)
+            (should-not (memq 'key-combo-pre-command-function pre-command-hook))
+            )
+          (context "execute only"
+            (include-context "execute")
+            (it (:vars ((cmd "=")))
+              (should (equal buffer-string "= ")))
+            (it (:vars ((cmd "==")))
+              (should (equal buffer-string "eq ")))
+            )
+
+          (context "pre-insert & execute"
+            (include-context "insert & move & execute")
+            (let ((cmd "."))
+              (setq pos 3)
+              (it (:vars ((pre-string "\"\"\n")))
+                (should (equal buffer-string "\"\" . \n")))
+              (it (:vars ((pre-string "\"\"a")))
+                (should (equal buffer-string "\"\" . a")))
+              (it (:vars ((pre-string "\"\"")))
+                (should (equal buffer-string "\"\" . ")))
+
+              (setq pos 2)
+              (it (:vars ((pre-string "\"\"")))
+                (should (equal buffer-string "\".\"")))
+              (it (:vars ((pre-string "a\"\"")))
+                (should (equal buffer-string "a . \"\"")))
+              )
+            )
+          )
+
+        (context ("in ruby" :vars ((mode 'ruby-mode)))
+          (include-context "execute")
+          (it (:vars ((cmd "..")))
+            (should (equal buffer-string "..")))
+          (it (:vars ((cmd "...")))
+            (should (equal buffer-string "...")))
+          (it (:vars ((cmd "!~")))
+            (should (equal buffer-string " !~ ")))
+          (it (:vars ((cmd "**")))
+            (should (equal buffer-string "**")))
+          (it (:vars ((cmd "||=")))
+            (should (equal buffer-string " ||= ")))
+          )
+
+        (context ("in c-mode" :vars ((mode 'c-mode)))
+          (context "execute"
+            (include-context "execute")
+            (it (:vars ((cmd "*")))
+              (should (equal buffer-string "*")))
+            (it (:vars ((cmd "**")))
+              (should (equal buffer-string "**")))
+            (it (:vars ((cmd "->")))
+              (should (equal buffer-string "->")))
+            (it (:vars ((cmd ".")))
+              (should (equal buffer-string ".")))
+            ;; todo check position
+            (it (:vars ((cmd "/* RET")))
+              (should (equal buffer-string "/*\n  \n */")))
+            (it (:vars ((cmd "{ RET")))
+              (should (equal buffer-string "{\n  \n}")))
+            )
+
+          (context "pre-string & execute"
+            (include-context "insert & execute")
+            (it (:vars ((cmd "=")
+                        (pre-string "a  ")))
+              (should (equal buffer-string "a  = ")))
+            )
+          )
+        )
+      )))
+
 ;;;###autoload
 (define-minor-mode key-combo-mode
   "Toggle key combo."
