@@ -1240,14 +1240,13 @@ which in most cases is shared with all other buffers in the same major mode.
 (define-minor-mode key-combo-mode
   "Toggle key combo."
   :lighter " KC"
-  :global t
   :group 'key-combo
   (if key-combo-mode
       (add-hook 'pre-command-hook
                 ;;post-self-insert-hook
-                #'key-combo-pre-command-function)
+                #'key-combo-pre-command-function nil t)
     (remove-hook 'pre-command-hook
-                 #'key-combo-pre-command-function))
+                 #'key-combo-pre-command-function t))
   )
 
 (defcustom key-combo-disable-modes nil
