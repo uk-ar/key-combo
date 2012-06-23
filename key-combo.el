@@ -178,7 +178,7 @@ The binding is probably a symbol with a function definition."
     (let ((p (point)))
       (if (and (eq ?  (char-before))
                (eq ?  (aref string 0)))
-          (delete-backward-char 1))
+          (delete-char -1))
       (insert string)
       (when (string-match "\n" string)
         (indent-according-to-mode)
@@ -313,7 +313,8 @@ which in most cases is shared with all other buffers in the same major mode.
     js-mode-hook
     js2-mode-hook
     )
-  "Hooks that enable `key-combo-common-default' setting")
+  "Hooks that enable `key-combo-common-default' setting"
+  :group 'key-combo)
 
 ;; (browse-url "http://bojovs.github.com/2012/04/24/ruby-coding-style/")
 (defcustom key-combo-common-default
@@ -376,7 +377,8 @@ which in most cases is shared with all other buffers in the same major mode.
     ("{" . (key-combo-execute-orignal))
     ("{ RET" . "{\n`!!'\n}")
     )
-  "Default binding which enabled by `key-combo-common-mode-hooks'")
+  "Default binding which enabled by `key-combo-common-mode-hooks'"
+  :group 'key-combo)
 
 (defvar key-combo-org-default
   '(("C-a" . (org-beginning-of-line
@@ -392,7 +394,7 @@ which in most cases is shared with all other buffers in the same major mode.
     ("&" . ("&" "&&" "&&&"))
     ("->" . "->"))
   "Default binding for c-mode,c++-mode,objc-mode"
-  )
+  :group 'key-combo)
 
 ;;;###autoload
 (defmacro key-combo-define-hook (hooks name keys)
@@ -1146,7 +1148,8 @@ which in most cases is shared with all other buffers in the same major mode.
   )
 
 (defcustom key-combo-disable-modes nil
-  "Major modes `key-combo-mode' can not run on.")
+  "Major modes `key-combo-mode' can not run on."
+  :group 'key-combo)
 
 ;; copy from auto-complete-mode-maybe
 (defun key-combo-mode-maybe ()
