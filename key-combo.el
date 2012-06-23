@@ -218,32 +218,32 @@ If COMMANDS is list, treated as sequential commands.
 "
   ;;copy from key-chord-define
   (let ((base-key (list (car (listify-key-sequence key)))))
-  (cond
-   ;;for sequence '(" = " " == ")
-   ((and (not (key-combo-elementp commands))
-         (key-combo-elementp (car-safe commands)))
+    (cond
+     ;;for sequence '(" = " " == ")
+     ((and (not (key-combo-elementp commands))
+           (key-combo-elementp (car-safe commands)))
       (let ((seq-keys base-key));;list
-      (mapc '(lambda(command)
-               (key-combo-define keymap (vconcat seq-keys) command)
-               (setq seq-keys
-                     (append seq-keys base-key)))
-            commands)))
-   (t
-    (unless (key-combo-elementp commands)
-      (error "%s is not command" commands))
-    ;; regard first key as key-combo-execute-orignal
-    (let ((first (key-binding
-                  (vector 'key-combo (intern (key-description base-key))))))
-      (when
-          (and (eq (safe-length (listify-key-sequence key)) 2)
-               (null first))
-        (define-key keymap
-          (vector 'key-combo (intern (key-description base-key)))
-          'key-combo-execute-orignal)))
-    (define-key keymap
-      (vector 'key-combo (intern (key-description key)))
-      (key-combo-get-command commands))
-    ))))
+        (mapc '(lambda(command)
+                 (key-combo-define keymap (vconcat seq-keys) command)
+                 (setq seq-keys
+                       (append seq-keys base-key)))
+              commands)))
+     (t
+      (unless (key-combo-elementp commands)
+        (error "%s is not command" commands))
+      ;; regard first key as key-combo-execute-orignal
+      (let ((first (key-binding
+                    (vector 'key-combo (intern (key-description base-key))))))
+        (when
+            (and (eq (safe-length (listify-key-sequence key)) 2)
+                 (null first))
+          (define-key keymap
+            (vector 'key-combo (intern (key-description base-key)))
+            'key-combo-execute-orignal)))
+      (define-key keymap
+        (vector 'key-combo (intern (key-description key)))
+        (key-combo-get-command commands))
+      ))))
 
 (defun key-combo-define-global (keys command)
   "Give KEY a global binding as COMMAND.\n
@@ -269,7 +269,7 @@ which in most cases is shared with all other buffers in the same major mode.
   '(;; instead of using (goto-char (point-min))
     ;; use beginning-of-buffer for keydescription
     ("C-a"   . (back-to-indentation move-beginning-of-line
-                                  beginning-of-buffer key-combo-return))
+                                    beginning-of-buffer key-combo-return))
     ("C-e"   . (move-end-of-line end-of-buffer key-combo-return))
     ))
 
@@ -321,10 +321,10 @@ which in most cases is shared with all other buffers in the same major mode.
     ("="  . (" = " " == " " === " ));;" === " for js
     ("=>" . " => ")
     ("=~" . " =~ ");;for ruby regexp
-    ("=*" . " =* ")
+    ("=*" . " =* ")                     ;for c
     ("+"  . (" + " "++"))
     ("+=" . " += ")
-    ("-"  . (" - " "--"));undo when unary operator
+    ("-"  . (" - " "--"))               ;undo when unary operator
     ("-=" . " -= ")
     ("->" . " -> ");; for haskell,coffee script. overwrite in c
     (">"  . (key-combo-execute-orignal " >> "))
@@ -380,8 +380,8 @@ which in most cases is shared with all other buffers in the same major mode.
 
 (defvar key-combo-org-default
   '(("C-a" . (org-beginning-of-line
-             beginning-of-buffer
-             key-combo-return));;back-to-indentation
+              beginning-of-buffer
+              key-combo-return));;back-to-indentation
     ("C-e" . (org-end-of-line
               end-of-buffer
               key-combo-return))
@@ -396,12 +396,12 @@ which in most cases is shared with all other buffers in the same major mode.
 
 ;;;###autoload
 (defmacro key-combo-define-hook (hooks name keys)
-    `(progn
-       (defun ,(nth 1 name) ()
-         (key-combo-load-default-1 (current-local-map) ,keys)
-         )
-       (key-combo-load-by-hooks ,hooks ,name)
-       ))
+  `(progn
+     (defun ,(nth 1 name) ()
+       (key-combo-load-default-1 (current-local-map) ,keys)
+       )
+     (key-combo-load-by-hooks ,hooks ,name)
+     ))
 
 ;;;###autoload
 (defun key-combo-load-default ()
@@ -413,8 +413,8 @@ which in most cases is shared with all other buffers in the same major mode.
                          'key-combo-common-load-default
                          key-combo-common-default)
   (key-combo-define-hook key-combo-lisp-mode-hooks
-                           'key-combo-lisp-load-default
-                           key-combo-lisp-default)
+                         'key-combo-lisp-load-default
+                         key-combo-lisp-default)
   (key-combo-define-hook '(c-mode-hook c++-mode-hook)
                          'key-combo-pointer-load-default
                          key-combo-pointer-default)
@@ -441,7 +441,7 @@ which in most cases is shared with all other buffers in the same major mode.
   (let ((hooks (if (consp hooks) hooks (list hooks))))
     (dolist (hook hooks)
       (add-hook hook func t))
-      ))
+    ))
 
 (defun key-combo-load-default-1 (map keys)
   (dolist (key keys)
@@ -463,6 +463,7 @@ which in most cases is shared with all other buffers in the same major mode.
   (interactive)
   (message "test1")
   )
+
 (defun test2()
   (interactive)
   (message "test2")
@@ -476,7 +477,7 @@ which in most cases is shared with all other buffers in the same major mode.
   (while unread-command-events
     ;; (setq last-command-event (read-event))
     (let ;((key (read-event)))
-      ((key (read-key-sequence-vector "a")))
+        ((key (read-key-sequence-vector "a")))
       (font-lock-fontify-buffer)
       (flet ((this-command-keys-vector () key))
         (setq this-command (key-binding key))
@@ -497,7 +498,7 @@ which in most cases is shared with all other buffers in the same major mode.
 
 (defmacro key-combo-test-command-1 (&rest body)
   `(prog1
-  (with-temp-buffer
+       (with-temp-buffer
          (switch-to-buffer (current-buffer))
          (setq last-command nil)
          (setq key-combo-command-keys nil)
@@ -512,16 +513,16 @@ which in most cases is shared with all other buffers in the same major mode.
         (execute-kbd-macro (read-kbd-macro (progn ,@body)))
         (buffer-substring-no-properties (point-min) (point-max)))
     `(key-combo-test-command-1 ,@body)
-  ))
+    ))
 
 (dont-compile
   (when(fboundp 'expectations)
     (expectations
       (expect "a  = "
         (key-combo-test-command
-         (c-mode)
-         (insert "a  ")
-         "="))
+          (c-mode)
+          (insert "a  ")
+          "="))
       (expect ".."
         (key-combo-test-command (ruby-mode) ".."))
       (expect "..."
@@ -537,35 +538,35 @@ which in most cases is shared with all other buffers in the same major mode.
           (emacs-lisp-mode)
           (insert "\"\"\n")
           (goto-char 3)
-         "."))
+          "."))
       (expect "\"\" . a"
         (key-combo-test-command
           (emacs-lisp-mode)
           (insert "\"\"a")
           (goto-char 3)
-         "."))
+          "."))
       (expect "\"\" . "
         (key-combo-test-command
           (emacs-lisp-mode)
           (insert "\"\"")
-         "."))
+          "."))
       (expect "\".\""
         (key-combo-test-command
           (emacs-lisp-mode)
           (insert "\"\"")
           (goto-char 2)
-         "."))
+          "."))
       (expect "a . \"\""
         (key-combo-test-command
           (emacs-lisp-mode)
           (insert "a\"\"")
           (goto-char 2)
-         "."))
+          "."))
       (expect "*"
         (key-combo-test-command (c-mode) "*"))
       (expect "->"
         (key-combo-test-command (c-mode) "->"))
-    (desc "RET")
+      (desc "RET")
       (expect "/*\n  \n */"
         (key-combo-test-command (c-mode) "/* RET"))
       (expect "{\n  \n}"
@@ -603,7 +604,7 @@ which in most cases is shared with all other buffers in the same major mode.
       (expect "= "
         (key-combo-test-command
           (emacs-lisp-mode)
-         "="))
+          "="))
       (desc "isearch-mode")
       ;; (expect "";;bug? "="
       ;;   (key-combo-test-command
@@ -619,12 +620,12 @@ which in most cases is shared with all other buffers in the same major mode.
         (key-combo-test-command
           (emacs-lisp-mode)
           (insert "\"")
-         "="))
+          "="))
       (expect ";="
         (key-combo-test-command
           (emacs-lisp-mode)
           (insert ";")
-         "="))
+          "="))
       (expect "= "
         (key-combo-test-command (emacs-lisp-mode) "="))
       (expect ","
@@ -641,7 +642,7 @@ which in most cases is shared with all other buffers in the same major mode.
         (key-combo-test-command
           (emacs-lisp-mode)
           (insert ";")
-         ","
+          ","
           ))
       (desc "for skk")
       (expect ";、"
@@ -650,33 +651,33 @@ which in most cases is shared with all other buffers in the same major mode.
           (skk-mode 1)
           (setq this-command 'skk-insert)
           (insert ";")
-         ","))
+          ","))
       (expect ";。"
         (key-combo-test-command
           (emacs-lisp-mode)
           (skk-mode 1)
           (setq this-command 'skk-insert)
           (insert ";")
-         "."))
+          "."))
       (desc "comment or string")
       (expect ";."
         (key-combo-test-command
           (emacs-lisp-mode)
-         ;; (setq this-command 'self-insert-command)
+          ;; (setq this-command 'self-insert-command)
           (insert ";")
-         "."))
+          "."))
       (expect ";\n;; "
         (key-combo-test-command
           (emacs-lisp-mode)
-         ;; (setq this-command 'self-insert-command)
+          ;; (setq this-command 'self-insert-command)
           (insert ";\n")
-         ";"))
+          ";"))
       (expect ">"
         (key-combo-test-command
-         ">"))
+          ">"))
       (expect "="
         (key-combo-test-command
-         (execute-kbd-macro "=")
+          (execute-kbd-macro "=")
           (buffer-substring-no-properties (point-min) (point-max))
           ))
       (expect " = "
@@ -880,7 +881,7 @@ which in most cases is shared with all other buffers in the same major mode.
       (desc "key-combo-elementp")
       (expect t
         (every 'identity
-        ;; (identity
+               ;; (identity
                (mapcar (lambda(command)
                          (progn (key-combo-define-global ">>" command)
                                 (identity (key-combo-lookup ">>"))))
@@ -916,7 +917,7 @@ which in most cases is shared with all other buffers in the same major mode.
                          (nil)
                          (self-insert-command)
                          wrong-command
-                        ))))
+                         ))))
       )))
 
 (defun key-combo-undo ()
@@ -928,11 +929,11 @@ which in most cases is shared with all other buffers in the same major mode.
 
 (defun key-combo-command-execute (command)
   "returns buffer undo list"
-    (cond
-     ((commandp command)
-      (call-interactively command))
-     (t (funcall command)))
-    (undo-boundary)
+  (cond
+   ((commandp command)
+    (call-interactively command))
+   (t (funcall command)))
+  (undo-boundary)
   )
 
 (defvar key-combo-command-keys nil)
@@ -993,12 +994,12 @@ which in most cases is shared with all other buffers in the same major mode.
                   (key-combo-set-start-position (cons (point) (window-start)))
                   (cond ((memq (key-binding command-key-vector)
                                '(self-insert-command skk-insert))
-                           (undo-boundary)
-                           (key-combo-command-execute
-                            (key-binding
-                             command-key-vector))
-                           (setq key-combo-need-undop t)
-                           ;; )
+                         (undo-boundary)
+                         (key-combo-command-execute
+                          (key-binding
+                           command-key-vector))
+                         (setq key-combo-need-undop t)
+                         ;; )
                          ));;;
                   )
                  ;; continue
@@ -1121,7 +1122,6 @@ which in most cases is shared with all other buffers in the same major mode.
           (it (:vars ((cmd "{ RET")))
             (should (equal buffer-string "{\n  \n}")))
           )
-
         (context "pre-string & execute"
           (include-context "insert & execute")
           (it (:vars ((cmd "=")
