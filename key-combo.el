@@ -380,14 +380,16 @@ which in most cases is shared with all other buffers in the same major mode.
   "Default binding which enabled by `key-combo-common-mode-hooks'"
   :group 'key-combo)
 
-(defvar key-combo-org-default
+(defcustom key-combo-org-default
   '(("C-a" . (org-beginning-of-line
               beginning-of-buffer
               key-combo-return));;back-to-indentation
     ("C-e" . (org-end-of-line
               end-of-buffer
               key-combo-return))
-    ))
+    )
+  "Default binding which enabled by `org-mode-hook'"
+  :group 'key-combo)
 
 (defcustom key-combo-pointer-default
   '(("*" . ("*" "**" "***"))
@@ -449,9 +451,11 @@ which in most cases is shared with all other buffers in the same major mode.
   (dolist (key keys)
     (key-combo-define map (read-kbd-macro (car key)) (cdr key))))
 
+(declare-function key-combo-set-start-position "key-combo")
+(declare-function key-combo-return "key-combo")
 ;;(declare-function key-combo-return "")
 (lexical-let ((key-combo-start-position nil))
-  (defun key-combo-set-start-position(pos)
+  (defun key-combo-set-start-position (pos)
     (setq key-combo-start-position pos))
   (defun key-combo-return ()
     "Return to the position when sequence of calls of the same command was started."
