@@ -521,411 +521,6 @@ which in most cases is shared with all other buffers in the same major mode.
     `(key-combo-test-command-1 ,@body)
     ))
 
-(dont-compile
-  (when(fboundp 'expectations)
-    (expectations
-      (expect "a  = "
-        (key-combo-test-command
-          (c-mode)
-          (insert "a  ")
-          "="))
-      (expect ".."
-        (key-combo-test-command (ruby-mode) ".."))
-      (expect "..."
-        (key-combo-test-command (ruby-mode) "..."))
-      (expect " !~ "
-        (key-combo-test-command (ruby-mode) "!~"))
-      (expect "**"
-        (key-combo-test-command (ruby-mode) "**"))
-      (expect " ||= "
-        (key-combo-test-command (ruby-mode) "||="))
-      (expect "\"\" . \n"
-        (key-combo-test-command
-          (emacs-lisp-mode)
-          (insert "\"\"\n")
-          (goto-char 3)
-          "."))
-      (expect "\"\" . a"
-        (key-combo-test-command
-          (emacs-lisp-mode)
-          (insert "\"\"a")
-          (goto-char 3)
-          "."))
-      (expect "\"\" . "
-        (key-combo-test-command
-          (emacs-lisp-mode)
-          (insert "\"\"")
-          "."))
-      (expect "\".\""
-        (key-combo-test-command
-          (emacs-lisp-mode)
-          (insert "\"\"")
-          (goto-char 2)
-          "."))
-      (expect "a . \"\""
-        (key-combo-test-command
-          (emacs-lisp-mode)
-          (insert "a\"\"")
-          (goto-char 2)
-          "."))
-      (expect "*"
-        (key-combo-test-command (c-mode) "*"))
-      (expect "->"
-        (key-combo-test-command (c-mode) "->"))
-      (desc "RET")
-      (expect "/*\n  \n */"
-        (key-combo-test-command (c-mode) "/* RET"))
-      (expect "{\n  \n}"
-        (key-combo-test-command (c-mode) "{ RET"))
-      (desc "key-combo-mode")
-      (expect nil
-        (with-temp-buffer
-          (key-combo-mode -1)
-          (if (memq 'key-combo-pre-command-function pre-command-hook) t nil)))
-      (expect t
-        (with-temp-buffer
-          (key-combo-mode 1)
-          (if (memq 'key-combo-pre-command-function pre-command-hook) t nil)))
-      (desc "key-combo-comment-or-stringp")
-      (expect nil
-        (with-temp-buffer
-          (emacs-lisp-mode)
-          (key-combo-comment-or-stringp)))
-      (expect t
-        (with-temp-buffer
-          (emacs-lisp-mode)
-          (insert "\"")
-          (key-combo-comment-or-stringp)))
-      (expect t
-        (with-temp-buffer
-          (emacs-lisp-mode)
-          (insert ";")
-          (key-combo-comment-or-stringp)))
-      (expect nil
-        (with-temp-buffer
-          (emacs-lisp-mode)
-          (insert ";\n")
-          (key-combo-comment-or-stringp)))
-      (desc "emacs-lisp-mode")
-      (expect "= "
-        (key-combo-test-command
-          (emacs-lisp-mode)
-          "="))
-      (desc "isearch-mode")
-      ;; (expect "";;bug? "="
-      ;;   (key-combo-test-command
-      ;;     (emacs-lisp-mode)
-      ;;     (isearch-mode t)
-      ;;     (execute-kbd-macro "=")
-      ;;     (isearch-done)
-      ;;     ;; for dummy
-      ;;     ""
-      ;;     ;; (setq isearch-mode nil)
-      ;;     ))
-      (expect "\"="
-        (key-combo-test-command
-          (emacs-lisp-mode)
-          (insert "\"")
-          "="))
-      (expect ";="
-        (key-combo-test-command
-          (emacs-lisp-mode)
-          (insert ";")
-          "="))
-      (expect "= "
-        (key-combo-test-command (emacs-lisp-mode) "="))
-      (expect ","
-        (key-combo-test-command ","))
-      (expect ",,"
-        (key-combo-test-command ",,"))
-      (expect " . "
-        (key-combo-test-command (emacs-lisp-mode) "."))
-      (expect ";; ."
-        (key-combo-test-command (emacs-lisp-mode) ";."))
-      (expect ";; ,"
-        (key-combo-test-command (emacs-lisp-mode) ";,"))
-      (expect ";,"
-        (key-combo-test-command
-          (emacs-lisp-mode)
-          (insert ";")
-          ","
-          ))
-      (desc "for skk")
-      (expect ";、"
-        (key-combo-test-command
-          (emacs-lisp-mode)
-          (skk-mode 1)
-          (setq this-command 'skk-insert)
-          (insert ";")
-          ","))
-      (expect ";。"
-        (key-combo-test-command
-          (emacs-lisp-mode)
-          (skk-mode 1)
-          (setq this-command 'skk-insert)
-          (insert ";")
-          "."))
-      (desc "comment or string")
-      (expect ";."
-        (key-combo-test-command
-          (emacs-lisp-mode)
-          ;; (setq this-command 'self-insert-command)
-          (insert ";")
-          "."))
-      (expect ";\n;; "
-        (key-combo-test-command
-          (emacs-lisp-mode)
-          ;; (setq this-command 'self-insert-command)
-          (insert ";\n")
-          ";"))
-      (expect ">"
-        (key-combo-test-command
-          ">"))
-      (expect "="
-        (key-combo-test-command
-          (execute-kbd-macro "=")
-          (buffer-substring-no-properties (point-min) (point-max))
-          ))
-      (expect " = "
-        (key-combo-test-command (c-mode) "="))
-      (expect " =* "
-        (key-combo-test-command (c-mode) "=*"))
-      (desc "sequence")
-      (expect " == "
-        (key-combo-test-command (c-mode) "=="))
-      (expect " => "
-        (key-combo-test-command (c-mode) "=>"))
-      (expect " === "
-        (key-combo-test-command (c-mode) "==="))
-      ;; (expect 'eval-last-sexp
-      ;;   (key-combo-test-command
-      ;;     (key-combo-finalize)
-      ;;     (insert "\"a\"")
-      ;;     (setq this-command 'eval-last-sexp)
-      ;;     "C-x C-e"
-      ;;     this-command
-      ;;     ))
-      (expect "I"
-        (key-combo-test-command
-          (insert "B\n IP")
-          (execute-kbd-macro (kbd "C-a"))
-          (char-to-string(following-char))
-          ))
-      (expect " "
-        (key-combo-test-command
-          (key-combo-finalize)
-          (insert "B\n IP")
-          (execute-kbd-macro (kbd "C-a C-a"))
-          (char-to-string(following-char))
-          ))
-      (expect "B"
-        (key-combo-test-command
-          (key-combo-finalize)
-          (insert "B\n IP")
-          (execute-kbd-macro (kbd "C-a C-a C-a"))
-          (char-to-string(following-char))
-          ))
-      (expect "P"
-        (key-combo-test-command
-          (key-combo-finalize)
-          (insert "B\n IP")
-          (backward-char)
-          (char-to-string(following-char))
-          ))
-      ;;(mock (edebug-defun) :times 1);;=> nil
-      ;;(mock (expectations-eval-defun) :times 1);;=> nil
-      (expect (mock (test1 *) :times 1);;=> nil
-        (key-combo-test-command
-          (key-combo-define-global (kbd "M-C-d") '(test1 test2))
-          "M-C-d"))
-      ;; "\M-\C-d"
-      (expect (mock (test2 *) :times 1);;=> nil
-        (key-combo-test-command
-          ;; (message "execute mock")
-          (key-combo-define-global (kbd "M-C-d") '(test1 test2))
-          "M-C-d M-C-d"))
-      (desc "key-combo-command-execute")
-      (expect "a"
-        (key-combo-test-command
-          (buffer-enable-undo)
-          (key-combo-command-execute (lambda() (insert "a")))
-          (buffer-string)
-          ))
-      (expect (error)
-        (key-combo-test-command
-          (buffer-enable-undo)
-          (key-combo-command-execute 'wrong-command)
-          (buffer-string)
-          ))
-      (expect "b"
-        (key-combo-test-command
-          (buffer-enable-undo)
-          (let ((last-command-event ?b))
-            (key-combo-command-execute 'self-insert-command))
-          (buffer-string)
-          ))
-      (desc "key-combo-get-command")
-      (expect "a"
-        (key-combo-test-command
-          (funcall (key-combo-get-command "a"))
-          (buffer-string)
-          ))
-      (expect '("aa" 2)
-        (key-combo-test-command
-          (funcall (key-combo-get-command "a`!!'a"))
-          (list (buffer-string) (point))
-          ))
-      (desc "key-combo-undo")
-      (expect ""
-        (key-combo-test-command
-          (buffer-enable-undo)
-          (let((key-combo-undo-list))
-            (key-combo-command-execute (lambda() (insert "a")))
-            (key-combo-undo))
-          (buffer-string)
-          ))
-      (expect ""
-        (key-combo-test-command
-          (buffer-enable-undo)
-          (let((key-combo-undo-list))
-            (key-combo-command-execute (key-combo-get-command "a`!!'a"))
-            (key-combo-undo))
-          (buffer-string)
-          ))
-      (desc "key-combo-define")
-      (expect (error)
-        (key-combo-define-global "a" 'wrong-command))
-      (expect (no-error)
-        (key-combo-define-global "a" 'self-insert-command))
-      (expect (no-error)
-        (key-combo-define-global "a" nil))
-      (expect (no-error)
-        (key-combo-define-global (kbd "C-M-g") 'self-insert-command))
-      (expect (mock (define-key * * *) :times 1);;=> nil
-        (stub key-binding => nil)
-        (key-combo-define-local "a" "a")
-        )
-      (expect (mock (define-key * * *) :times 1);;=> nil
-        ;;(not-called define-key)
-        (stub key-binding =>'key-combo)
-        (key-combo-define-local "a" '("a"))
-        )
-      (expect (mock (define-key * * *) :times 2);;(not-called define-key)
-        ;;(mock   (define-key * * *) :times 0);;=> nil
-        (stub key-binding =>'key-combo)
-        (key-combo-define-local "a" '("a" "bb"))
-        )
-      (desc "undo")
-      (expect "="
-        (key-combo-test-command (c-mode) "=\C-xu"))
-      (expect " = "
-        (key-combo-test-command (c-mode) "==\C-xu"))
-      (desc "loop")
-      (expect " = "
-        (key-combo-test-command (c-mode) "===="))
-      (expect " => = "
-        (key-combo-test-command (c-mode) "=>="))
-      (desc "key-combo-lookup")
-      (expect " = "
-        (key-combo-test-command
-          (c-mode)
-          (funcall
-           (key-combo-lookup "="))
-          (buffer-string)))
-      (expect " == "
-        (key-combo-test-command
-          (c-mode)
-          (funcall
-           (key-combo-lookup "=="))
-          (buffer-string)))
-      (expect " == "
-        (key-combo-test-command
-          (c-mode)
-          (key-combo-define-global (kbd "C-M-h") " == ")
-          (funcall
-           (key-combo-lookup (kbd "C-M-h")))
-          (buffer-string)))
-      (expect " === "
-        (key-combo-test-command
-          (c-mode)
-          (key-combo-define-global (kbd "C-M-h C-M-h") " === ")
-          "C-M-h C-M-h"
-          ))
-      (expect " === "
-        (key-combo-test-command
-          (c-mode)
-          (key-combo-define-global (kbd "C-M-h C-M-h") " === ")
-          (funcall
-           (key-combo-lookup (kbd "C-M-h C-M-h")))
-          (buffer-string)))
-      (expect " = "
-        (key-combo-test-command
-          (c-mode)
-          (funcall
-           (key-combo-lookup [?=]))
-          (buffer-string)))
-      (expect " == "
-        (key-combo-test-command
-          (c-mode)
-          (funcall
-           (key-combo-lookup [?= ?=]))
-          (buffer-string)))
-      (expect " => "
-        (key-combo-test-command
-          (c-mode)
-          (funcall
-           (key-combo-lookup [?= ?>]))
-          (buffer-string)))
-      (expect " === "
-        (key-combo-test-command
-          (c-mode)
-          (funcall
-           (key-combo-lookup [?= ?= ?=]))
-          (buffer-string)))
-      (expect nil
-        (key-combo-lookup [?= ?= ?= ?=]))
-      (desc "key-combo-elementp")
-      (expect t
-        (every 'identity
-               ;; (identity
-               (mapcar (lambda(command)
-                         (progn (key-combo-define-global ">>" command)
-                                (identity (key-combo-lookup ">>"))))
-                       '((lambda()())
-                         ">"
-                         ;;nil
-                         self-insert-command
-                         ((lambda()()))
-                         (">")
-                         ;;(nil)
-                         (self-insert-command)
-                         (">" ">")
-                         (">" (lambda()()))
-                         ((lambda()()) ">")
-                         ((lambda()()) (lambda()()))
-                         (">" self-insert-command)
-                         (self-insert-command ">")
-                         (self-insert-command self-insert-command)
-                         ))))
-      (expect t
-        (every 'identity
-               (mapcar (lambda(x) (key-combo-elementp x))
-                       '((lambda()())
-                         ">"
-                         nil
-                         self-insert-command
-                         ))))
-      (expect t
-        (every 'null
-               (mapcar (lambda(x) (key-combo-elementp x))
-                       '((">")
-                         ((lambda()()))
-                         (nil)
-                         (self-insert-command)
-                         wrong-command
-                         ))))
-      )))
-
 (defun key-combo-undo ()
   "returns buffer undo list"
   ;; (message "count:%d" (1+ (key-combo-count-boundary buffer-undo-list)))
@@ -1421,6 +1016,410 @@ which in most cases is shared with all other buffers in the same major mode.
   key-combo-mode key-combo-mode-maybe
   ;; :init-value t bug?
   :group 'key-combo)
+(dont-compile
+  (when(fboundp 'expectations)
+    (expectations
+      (expect "a  = "
+        (key-combo-test-command
+          (c-mode)
+          (insert "a  ")
+          "="))
+      (expect ".."
+        (key-combo-test-command (ruby-mode) ".."))
+      (expect "..."
+        (key-combo-test-command (ruby-mode) "..."))
+      (expect " !~ "
+        (key-combo-test-command (ruby-mode) "!~"))
+      (expect "**"
+        (key-combo-test-command (ruby-mode) "**"))
+      (expect " ||= "
+        (key-combo-test-command (ruby-mode) "||="))
+      (expect "\"\" . \n"
+        (key-combo-test-command
+          (emacs-lisp-mode)
+          (insert "\"\"\n")
+          (goto-char 3)
+          "."))
+      (expect "\"\" . a"
+        (key-combo-test-command
+          (emacs-lisp-mode)
+          (insert "\"\"a")
+          (goto-char 3)
+          "."))
+      (expect "\"\" . "
+        (key-combo-test-command
+          (emacs-lisp-mode)
+          (insert "\"\"")
+          "."))
+      (expect "\".\""
+        (key-combo-test-command
+          (emacs-lisp-mode)
+          (insert "\"\"")
+          (goto-char 2)
+          "."))
+      (expect "a . \"\""
+        (key-combo-test-command
+          (emacs-lisp-mode)
+          (insert "a\"\"")
+          (goto-char 2)
+          "."))
+      (expect "*"
+        (key-combo-test-command (c-mode) "*"))
+      (expect "->"
+        (key-combo-test-command (c-mode) "->"))
+      (desc "RET")
+      (expect "/*\n  \n */"
+        (key-combo-test-command (c-mode) "/* RET"))
+      (expect "{\n  \n}"
+        (key-combo-test-command (c-mode) "{ RET"))
+      (desc "key-combo-mode")
+      (expect nil
+        (with-temp-buffer
+          (key-combo-mode -1)
+          (if (memq 'key-combo-pre-command-function pre-command-hook) t nil)))
+      (expect t
+        (with-temp-buffer
+          (key-combo-mode 1)
+          (if (memq 'key-combo-pre-command-function pre-command-hook) t nil)))
+      (desc "key-combo-comment-or-stringp")
+      (expect nil
+        (with-temp-buffer
+          (emacs-lisp-mode)
+          (key-combo-comment-or-stringp)))
+      (expect t
+        (with-temp-buffer
+          (emacs-lisp-mode)
+          (insert "\"")
+          (key-combo-comment-or-stringp)))
+      (expect t
+        (with-temp-buffer
+          (emacs-lisp-mode)
+          (insert ";")
+          (key-combo-comment-or-stringp)))
+      (expect nil
+        (with-temp-buffer
+          (emacs-lisp-mode)
+          (insert ";\n")
+          (key-combo-comment-or-stringp)))
+      (desc "emacs-lisp-mode")
+      (expect "= "
+        (key-combo-test-command
+          (emacs-lisp-mode)
+          "="))
+      (desc "isearch-mode")
+      ;; (expect "";;bug? "="
+      ;;   (key-combo-test-command
+      ;;     (emacs-lisp-mode)
+      ;;     (isearch-mode t)
+      ;;     (execute-kbd-macro "=")
+      ;;     (isearch-done)
+      ;;     ;; for dummy
+      ;;     ""
+      ;;     ;; (setq isearch-mode nil)
+      ;;     ))
+      (expect "\"="
+        (key-combo-test-command
+          (emacs-lisp-mode)
+          (insert "\"")
+          "="))
+      (expect ";="
+        (key-combo-test-command
+          (emacs-lisp-mode)
+          (insert ";")
+          "="))
+      (expect "= "
+        (key-combo-test-command (emacs-lisp-mode) "="))
+      (expect ","
+        (key-combo-test-command ","))
+      (expect ",,"
+        (key-combo-test-command ",,"))
+      (expect " . "
+        (key-combo-test-command (emacs-lisp-mode) "."))
+      (expect ";; ."
+        (key-combo-test-command (emacs-lisp-mode) ";."))
+      (expect ";; ,"
+        (key-combo-test-command (emacs-lisp-mode) ";,"))
+      (expect ";,"
+        (key-combo-test-command
+          (emacs-lisp-mode)
+          (insert ";")
+          ","
+          ))
+      (desc "for skk")
+      (expect ";、"
+        (key-combo-test-command
+          (emacs-lisp-mode)
+          (skk-mode 1)
+          (setq this-command 'skk-insert)
+          (insert ";")
+          ","))
+      (expect ";。"
+        (key-combo-test-command
+          (emacs-lisp-mode)
+          (skk-mode 1)
+          (setq this-command 'skk-insert)
+          (insert ";")
+          "."))
+      (desc "comment or string")
+      (expect ";."
+        (key-combo-test-command
+          (emacs-lisp-mode)
+          ;; (setq this-command 'self-insert-command)
+          (insert ";")
+          "."))
+      (expect ";\n;; "
+        (key-combo-test-command
+          (emacs-lisp-mode)
+          ;; (setq this-command 'self-insert-command)
+          (insert ";\n")
+          ";"))
+      (expect ">"
+        (key-combo-test-command
+          ">"))
+      (expect "="
+        (key-combo-test-command
+          (execute-kbd-macro "=")
+          (buffer-substring-no-properties (point-min) (point-max))
+          ))
+      (expect " = "
+        (key-combo-test-command (c-mode) "="))
+      (expect " =* "
+        (key-combo-test-command (c-mode) "=*"))
+      (desc "sequence")
+      (expect " == "
+        (key-combo-test-command (c-mode) "=="))
+      (expect " => "
+        (key-combo-test-command (c-mode) "=>"))
+      (expect " === "
+        (key-combo-test-command (c-mode) "==="))
+      ;; (expect 'eval-last-sexp
+      ;;   (key-combo-test-command
+      ;;     (key-combo-finalize)
+      ;;     (insert "\"a\"")
+      ;;     (setq this-command 'eval-last-sexp)
+      ;;     "C-x C-e"
+      ;;     this-command
+      ;;     ))
+      (expect "I"
+        (key-combo-test-command
+          (insert "B\n IP")
+          (execute-kbd-macro (kbd "C-a"))
+          (char-to-string(following-char))
+          ))
+      (expect " "
+        (key-combo-test-command
+          (key-combo-finalize)
+          (insert "B\n IP")
+          (execute-kbd-macro (kbd "C-a C-a"))
+          (char-to-string(following-char))
+          ))
+      (expect "B"
+        (key-combo-test-command
+          (key-combo-finalize)
+          (insert "B\n IP")
+          (execute-kbd-macro (kbd "C-a C-a C-a"))
+          (char-to-string(following-char))
+          ))
+      (expect "P"
+        (key-combo-test-command
+          (key-combo-finalize)
+          (insert "B\n IP")
+          (backward-char)
+          (char-to-string(following-char))
+          ))
+      ;;(mock (edebug-defun) :times 1);;=> nil
+      ;;(mock (expectations-eval-defun) :times 1);;=> nil
+      (expect (mock (test1 *) :times 1);;=> nil
+        (key-combo-test-command
+          (key-combo-define-global (kbd "M-C-d") '(test1 test2))
+          "M-C-d"))
+      ;; "\M-\C-d"
+      (expect (mock (test2 *) :times 1);;=> nil
+        (key-combo-test-command
+          ;; (message "execute mock")
+          (key-combo-define-global (kbd "M-C-d") '(test1 test2))
+          "M-C-d M-C-d"))
+      (desc "key-combo-command-execute")
+      (expect "a"
+        (key-combo-test-command
+          (buffer-enable-undo)
+          (key-combo-command-execute (lambda() (insert "a")))
+          (buffer-string)
+          ))
+      (expect (error)
+        (key-combo-test-command
+          (buffer-enable-undo)
+          (key-combo-command-execute 'wrong-command)
+          (buffer-string)
+          ))
+      (expect "b"
+        (key-combo-test-command
+          (buffer-enable-undo)
+          (let ((last-command-event ?b))
+            (key-combo-command-execute 'self-insert-command))
+          (buffer-string)
+          ))
+      (desc "key-combo-get-command")
+      (expect "a"
+        (key-combo-test-command
+          (funcall (key-combo-get-command "a"))
+          (buffer-string)
+          ))
+      (expect '("aa" 2)
+        (key-combo-test-command
+          (funcall (key-combo-get-command "a`!!'a"))
+          (list (buffer-string) (point))
+          ))
+      (desc "key-combo-undo")
+      (expect ""
+        (key-combo-test-command
+          (buffer-enable-undo)
+          (let((key-combo-undo-list))
+            (key-combo-command-execute (lambda() (insert "a")))
+            (key-combo-undo))
+          (buffer-string)
+          ))
+      (expect ""
+        (key-combo-test-command
+          (buffer-enable-undo)
+          (let((key-combo-undo-list))
+            (key-combo-command-execute (key-combo-get-command "a`!!'a"))
+            (key-combo-undo))
+          (buffer-string)
+          ))
+      (desc "key-combo-define")
+      (expect (error)
+        (key-combo-define-global "a" 'wrong-command))
+      (expect (no-error)
+        (key-combo-define-global "a" 'self-insert-command))
+      (expect (no-error)
+        (key-combo-define-global "a" nil))
+      (expect (no-error)
+        (key-combo-define-global (kbd "C-M-g") 'self-insert-command))
+      (expect (mock (define-key * * *) :times 1);;=> nil
+        (stub key-binding => nil)
+        (key-combo-define-local "a" "a")
+        )
+      (expect (mock (define-key * * *) :times 1);;=> nil
+        ;;(not-called define-key)
+        (stub key-binding =>'key-combo)
+        (key-combo-define-local "a" '("a"))
+        )
+      (expect (mock (define-key * * *) :times 2);;(not-called define-key)
+        ;;(mock   (define-key * * *) :times 0);;=> nil
+        (stub key-binding =>'key-combo)
+        (key-combo-define-local "a" '("a" "bb"))
+        )
+      (desc "undo")
+      (expect "="
+        (key-combo-test-command (c-mode) "=\C-xu"))
+      (expect " = "
+        (key-combo-test-command (c-mode) "==\C-xu"))
+      (desc "loop")
+      (expect " = "
+        (key-combo-test-command (c-mode) "===="))
+      (expect " => = "
+        (key-combo-test-command (c-mode) "=>="))
+      (desc "key-combo-lookup")
+      (expect " = "
+        (key-combo-test-command
+          (c-mode)
+          (funcall
+           (key-combo-lookup "="))
+          (buffer-string)))
+      (expect " == "
+        (key-combo-test-command
+          (c-mode)
+          (funcall
+           (key-combo-lookup "=="))
+          (buffer-string)))
+      (expect " == "
+        (key-combo-test-command
+          (c-mode)
+          (key-combo-define-global (kbd "C-M-h") " == ")
+          (funcall
+           (key-combo-lookup (kbd "C-M-h")))
+          (buffer-string)))
+      (expect " === "
+        (key-combo-test-command
+          (c-mode)
+          (key-combo-define-global (kbd "C-M-h C-M-h") " === ")
+          "C-M-h C-M-h"
+          ))
+      (expect " === "
+        (key-combo-test-command
+          (c-mode)
+          (key-combo-define-global (kbd "C-M-h C-M-h") " === ")
+          (funcall
+           (key-combo-lookup (kbd "C-M-h C-M-h")))
+          (buffer-string)))
+      (expect " = "
+        (key-combo-test-command
+          (c-mode)
+          (funcall
+           (key-combo-lookup [?=]))
+          (buffer-string)))
+      (expect " == "
+        (key-combo-test-command
+          (c-mode)
+          (funcall
+           (key-combo-lookup [?= ?=]))
+          (buffer-string)))
+      (expect " => "
+        (key-combo-test-command
+          (c-mode)
+          (funcall
+           (key-combo-lookup [?= ?>]))
+          (buffer-string)))
+      (expect " === "
+        (key-combo-test-command
+          (c-mode)
+          (funcall
+           (key-combo-lookup [?= ?= ?=]))
+          (buffer-string)))
+      (expect nil
+        (key-combo-lookup [?= ?= ?= ?=]))
+      (desc "key-combo-elementp")
+      (expect t
+        (every 'identity
+               ;; (identity
+               (mapcar (lambda(command)
+                         (progn (key-combo-define-global ">>" command)
+                                (identity (key-combo-lookup ">>"))))
+                       '((lambda()())
+                         ">"
+                         ;;nil
+                         self-insert-command
+                         ((lambda()()))
+                         (">")
+                         ;;(nil)
+                         (self-insert-command)
+                         (">" ">")
+                         (">" (lambda()()))
+                         ((lambda()()) ">")
+                         ((lambda()()) (lambda()()))
+                         (">" self-insert-command)
+                         (self-insert-command ">")
+                         (self-insert-command self-insert-command)
+                         ))))
+      (expect t
+        (every 'identity
+               (mapcar (lambda(x) (key-combo-elementp x))
+                       '((lambda()())
+                         ">"
+                         nil
+                         self-insert-command
+                         ))))
+      (expect t
+        (every 'null
+               (mapcar (lambda(x) (key-combo-elementp x))
+                       '((">")
+                         ((lambda()()))
+                         (nil)
+                         (self-insert-command)
+                         wrong-command
+                         ))))
+      )))
 
 ;; (listify-key-sequence
 ;;  (kbd "M-C-d M-C-d"))
