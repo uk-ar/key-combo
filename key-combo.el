@@ -465,62 +465,6 @@ which in most cases is shared with all other buffers in the same major mode.
         (set-window-start (selected-window) (cdr key-combo-start-position)))))
   )
 
-(defun test1()
-  (interactive)
-  (message "test1")
-  )
-
-(defun test2()
-  (interactive)
-  (message "test2")
-  )
-
-(defun key-combo-test-command-loop ()
-  ;; (key-combo-finalize)
-  (font-lock-fontify-buffer)
-  (setq last-command nil)
-  ;; (setq last-command 'self-insert-command)
-  (while unread-command-events
-    ;; (setq last-command-event (read-event))
-    (let ;((key (read-event)))
-        ((key (read-key-sequence-vector "a")))
-      (font-lock-fontify-buffer)
-      (flet ((this-command-keys-vector () key))
-        (setq this-command (key-binding key))
-        (setq last-command-event (aref key (1- (length key))))
-        (funcall 'key-combo-pre-command-function)
-        ;; (message "%S:%S" unread-command-events (this-command-keys-vector))
-        (call-interactively this-command)
-        (undo-boundary)
-        (setq last-command this-command)
-        ;; (message "th:%S k:%s nu:%s" this-command key key-combo-need-undop)
-        )
-      )
-    ;; (message "%S:%S" unread-command-events last-command-event)
-    )
-  ;;(key-binding "C-M-x")
-  (setq key-combo-command-keys nil)
-  )
-
-(defmacro key-combo-test-command-1 (&rest body)
-  `(prog1
-       (with-temp-buffer
-         (switch-to-buffer (current-buffer))
-         (setq last-command nil)
-         (setq key-combo-command-keys nil)
-         ,@body
-         )
-     ;; (key-combo-finalize)
-     ))
-
-(defmacro key-combo-test-command (&rest body)
-  (if (stringp (car (last body)))
-      `(key-combo-test-command-1
-        (execute-kbd-macro (read-kbd-macro (progn ,@body)))
-        (buffer-substring-no-properties (point-min) (point-max)))
-    `(key-combo-test-command-1 ,@body)
-    ))
-
 (defun key-combo-undo ()
   "returns buffer undo list"
   ;; (message "count:%d" (1+ (key-combo-count-boundary buffer-undo-list)))
@@ -561,6 +505,39 @@ which in most cases is shared with all other buffers in the same major mode.
   (setq key-combo-original-undo-list nil)
   (setq key-combo-command-keys nil)
   )
+
+;;;###autoload
+(define-minor-mode key-combo-mode
+  "Toggle key combo."
+  :lighter " KC"
+  :group 'key-combo
+  (if key-combo-mode
+      (add-hook 'pre-command-hook
+                ;;post-self-insert-hook
+                #'key-combo-pre-command-function nil t)
+    (remove-hook 'pre-command-hook
+                 #'key-combo-pre-command-function t))
+  )
+
+(defcustom key-combo-disable-modes nil
+  "Major modes `key-combo-mode' can not run on."
+  :group 'key-combo)
+
+;; copy from auto-complete-mode-maybe
+(defun key-combo-mode-maybe ()
+  "What buffer `key-combo-mode' prefers."
+  (when (and (not (minibufferp (current-buffer)))
+             (not (memq major-mode key-combo-disable-modes))
+             (key-combo-mode 1)
+             ;; (key-combo-setup)
+             )))
+
+;; copy from global-auto-complete-mode
+;;;###autoload
+(define-global-minor-mode global-key-combo-mode
+  key-combo-mode key-combo-mode-maybe
+  ;; :init-value t bug?
+  :group 'key-combo)
 
 (defun key-combo-pre-command-function ()
   (let ((command-key-vector (this-command-keys-vector))
@@ -984,38 +961,62 @@ which in most cases is shared with all other buffers in the same major mode.
       )
     ))
 
-;;;###autoload
-(define-minor-mode key-combo-mode
-  "Toggle key combo."
-  :lighter " KC"
-  :group 'key-combo
-  (if key-combo-mode
-      (add-hook 'pre-command-hook
-                ;;post-self-insert-hook
-                #'key-combo-pre-command-function nil t)
-    (remove-hook 'pre-command-hook
-                 #'key-combo-pre-command-function t))
+(defun test1()
+  (interactive)
+  (message "test1")
   )
 
-(defcustom key-combo-disable-modes nil
-  "Major modes `key-combo-mode' can not run on."
-  :group 'key-combo)
+(defun test2()
+  (interactive)
+  (message "test2")
+  )
 
-;; copy from auto-complete-mode-maybe
-(defun key-combo-mode-maybe ()
-  "What buffer `key-combo-mode' prefers."
-  (when (and (not (minibufferp (current-buffer)))
-             (not (memq major-mode key-combo-disable-modes))
-             (key-combo-mode 1)
-             ;; (key-combo-setup)
-             )))
+(defun key-combo-test-command-loop ()
+  ;; (key-combo-finalize)
+  (font-lock-fontify-buffer)
+  (setq last-command nil)
+  ;; (setq last-command 'self-insert-command)
+  (while unread-command-events
+    ;; (setq last-command-event (read-event))
+    (let ;((key (read-event)))
+        ((key (read-key-sequence-vector "a")))
+      (font-lock-fontify-buffer)
+      (flet ((this-command-keys-vector () key))
+        (setq this-command (key-binding key))
+        (setq last-command-event (aref key (1- (length key))))
+        (funcall 'key-combo-pre-command-function)
+        ;; (message "%S:%S" unread-command-events (this-command-keys-vector))
+        (call-interactively this-command)
+        (undo-boundary)
+        (setq last-command this-command)
+        ;; (message "th:%S k:%s nu:%s" this-command key key-combo-need-undop)
+        )
+      )
+    ;; (message "%S:%S" unread-command-events last-command-event)
+    )
+  ;;(key-binding "C-M-x")
+  (setq key-combo-command-keys nil)
+  )
 
-;; copy from global-auto-complete-mode
-;;;###autoload
-(define-global-minor-mode global-key-combo-mode
-  key-combo-mode key-combo-mode-maybe
-  ;; :init-value t bug?
-  :group 'key-combo)
+(defmacro key-combo-test-command-1 (&rest body)
+  `(prog1
+       (with-temp-buffer
+         (switch-to-buffer (current-buffer))
+         (setq last-command nil)
+         (setq key-combo-command-keys nil)
+         ,@body
+         )
+     ;; (key-combo-finalize)
+     ))
+
+(defmacro key-combo-test-command (&rest body)
+  (if (stringp (car (last body)))
+      `(key-combo-test-command-1
+        (execute-kbd-macro (read-kbd-macro (progn ,@body)))
+        (buffer-substring-no-properties (point-min) (point-max)))
+    `(key-combo-test-command-1 ,@body)
+    ))
+
 (dont-compile
   (when(fboundp 'expectations)
     (expectations
