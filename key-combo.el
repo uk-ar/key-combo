@@ -152,10 +152,10 @@ The binding is probably a symbol with a function definition."
 ;; From context-skk.el
 ;; http://openlab.ring.gr.jp/skk/skk/main/context-skk.el
 (defun key-combo-in-stringp ()
-  (nth 3 (parse-partial-sexp (point) (point-min))))
+  (nth 3 (syntax-ppss)))
 
 (defun key-combo-in-commentp ()
-  (nth 4 (parse-partial-sexp (point) (point-min))))
+  (nth 4 (syntax-ppss)))
 
 (defun key-combo-comment-or-stringp ()
   (if (or (key-combo-in-stringp) (key-combo-in-commentp))
@@ -566,6 +566,9 @@ which in most cases is shared with all other buffers in the same major mode.
             )
            (setq this-command 'key-combo)
            (cond (first-timep
+                  ;; for test
+                  ;; (setq key-combo-command-keys nil)
+                  ;; (key-combo-finalize)
                   ;; first time
                   (setq key-combo-original-undo-list buffer-undo-list
                         buffer-undo-list nil)
