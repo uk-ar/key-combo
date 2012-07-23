@@ -232,10 +232,10 @@ If COMMANDS is list, treated as sequential commands.
      ((and (not (key-combo-elementp commands))
            (key-combo-elementp (car-safe commands)))
       (let ((seq-keys base-key));;list
-        (mapc '(lambda(command)
-                 (key-combo-define keymap (vconcat seq-keys) command)
-                 (setq seq-keys
-                       (append seq-keys base-key)))
+        (mapc #'(lambda(command)
+                  (key-combo-define keymap (vconcat seq-keys) command)
+                  (setq seq-keys
+                        (append seq-keys base-key)))
               commands)))
      (t
       (unless (key-combo-elementp commands)
