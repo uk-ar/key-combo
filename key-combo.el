@@ -601,6 +601,12 @@ which in most cases is shared with all other buffers in the same major mode.
              ))
           )))
 
+(defun key-combo-test-execute (cmd)
+  (key-combo-mode 1)
+  (execute-kbd-macro (read-kbd-macro cmd))
+  (substring-no-properties (buffer-string))
+  )
+
 (dont-compile
   (when (fboundp 'describe)
     (describe ("key-combo in temp-buffer" :vars ((mode)))
@@ -770,39 +776,41 @@ which in most cases is shared with all other buffers in the same major mode.
           (it (:vars ((cmd ";,")))
             (should (string= (buffer-string) ";; ,"))))
         (context "with mock"
-          (it ()
-            (should-error
-             (with-mock
-               (mock (test1 *) :times 1)
-               (key-combo-define-global (kbd "M-C-d") '(test1 test2)))))
-          (it ()
-            ;; no error
-            (with-mock
-              (mock (test1 *) :times 1)
-              (key-combo-define-global (kbd "M-C-d") '(test1 test2))
-              (execute-kbd-macro (kbd "M-C-d"))))
-          (it ()
-            ;; no error
-            (with-mock
-              (mock (test1 *) :times 1)
-              (mock (test2 *) :times 1)
-              (key-combo-define-global (kbd "M-C-d") '(test1 test2))
-              (execute-kbd-macro (kbd "M-C-d M-C-d"))))
-          (it ()
-            ;; no error
-            (with-mock
-              (mock (define-key * * *) :times 1)
-              (key-combo-define-local "a" "a")))
-          (it ()
-            ;; no error
-            (with-mock
-              (mock (define-key * * *) :times 1)
-              (key-combo-define-local "a" '("a"))))
-          (it ()
-            ;; no error
-            (with-mock
-              (mock (define-key * * *) :times 2);; 1 for recursive call?
-              (key-combo-define-local "a" '("a" "b")))))
+          (when (require 'el-mock nil t)
+            (it ()
+              (should-error
+               (with-mock
+                 (mock (test1 *) :times 1)
+                 (key-combo-define-global (kbd "M-C-d") '(test1 test2)))))
+            (it ()
+              ;; no error
+              (with-mock
+                (mock (test1 *) :times 1)
+                (key-combo-define-global (kbd "M-C-d") '(test1 test2))
+                (execute-kbd-macro (kbd "M-C-d"))))
+            (it ()
+              ;; no error
+              (with-mock
+                (mock (test1 *) :times 1)
+                (mock (test2 *) :times 1)
+                (key-combo-define-global (kbd "M-C-d") '(test1 test2))
+                (execute-kbd-macro (kbd "M-C-d M-C-d"))))
+            (it ()
+              ;; no error
+              (with-mock
+                (mock (define-key * * *) :times 1)
+                (key-combo-define-local "a" "a")))
+            (it ()
+              ;; no error
+              (with-mock
+                (mock (define-key * * *) :times 1)
+                (key-combo-define-local "a" '("a"))))
+            (it ()
+              ;; no error
+              (with-mock
+                (mock (define-key * * *) :times 2);; 1 for recursive call?
+                (key-combo-define-local "a" '("a" "b")))))
+            )
         (context "in skk-mode"
           (before
             (skk-mode 1)
@@ -868,6 +876,57 @@ which in most cases is shared with all other buffers in the same major mode.
         (it (:vars ((cmd "||=")))
           (should (string= (buffer-string) " ||= "))))
       (context ("in c-mode" :vars ((mode 'c-mode)))
+        (context "execute+"
+          (it ()
+            (should (string= (key-combo-test-execute "+") " + ")))
+          (it ()
+            (should (string= (key-combo-test-execute "++") "++")))
+          ;; (it ()
+          ;;   (should (string= (key-description "+") "+")))
+          (it ()
+            (should (equal (listify-key-sequence "+") '(43))))
+          (it ()
+            (should (string= (key-description '(?+)) "+")))
+          (it ()
+            (should (equal (vector 'key-combo (intern (key-description '(?+))))
+                           [key-combo +])))
+          (it ("a")
+            (should (not (null (key-binding
+                                (vector 'key-combo
+                                        (intern (key-description '(?+)))))))))
+          (it ("c")
+            (should (not (null (lookup-key
+                                (current-local-map)
+                                (vector 'key-combo
+                                        (intern (key-description '(?+)))))))))
+          (it ("b")
+            (should (not (equal (key-binding
+                                 (vector 'key-combo
+                                         (intern (key-description '(?+)))))
+                                'key-combo-execute-orignal))))
+          (it ()
+            (should (not (null (key-combo-get-command "+")))))
+          (it ()
+            (should (not (equal (key-combo-get-command "+")
+                                'key-combo-execute-orignal))))
+          (it ("d")
+            (key-combo-define-local "a" nil)
+            ;; (key-combo-lookup "a")
+            ;; (key-binding (vector 'key-combo (intern (key-description "a"))))
+            ;; accept-default bug?
+            (should (eq (lookup-key (current-local-map)
+                                    (vector 'key-combo
+                                            (intern (key-description '(?a)))))
+                        nil))
+            (key-combo-define-local "a" "a")
+            (should (not (equal (lookup-key (current-local-map)
+                                            (vector
+                                             'key-combo
+                                             (intern (key-description '(?a)))))
+                                nil)))
+            (key-combo-define-local "a" nil)
+            )
+          )
         (context "undo"
           (before
             (buffer-enable-undo))
@@ -906,8 +965,145 @@ which in most cases is shared with all other buffers in the same major mode.
           ;; todo check position
           (it (:vars ((cmd "/* RET")))
             (should (string= (buffer-string) "/*\n  \n */")))
-          (it (:vars ((cmd "{ RET")))
-            (should (string= (buffer-string) "{\n  \n}")))
+          ;; todo depend on indent width
+          ;; (it (:vars ((cmd "{ RET")))
+          ;;   (should (string= (buffer-string) "{\n  \n}")))
+          (setq cmd nil)
+          (context ("funcall" :vars (lookup-cmd))
+            (before
+              (funcall (key-combo-lookup lookup-cmd)))
+            (it (:vars ((lookup-cmd "=")))
+              (should (equal (buffer-string) " = ")))
+            (it (:vars ((lookup-cmd "==")))
+              (should (equal (buffer-string) " == ")))
+            (it ("[?=]" :vars ((lookup-cmd [?=])))
+              (should (equal (buffer-string) " = ")))
+            (it ("[?= ?=]" :vars ((lookup-cmd [?= ?=])))
+              (should (equal (buffer-string) " == ")))
+            (it (:vars ((lookup-cmd [?= ?>])))
+              (should (equal (buffer-string) " => ")))
+            (it (:vars ((lookup-cmd [?= ?= ?=])))
+              (should (equal (buffer-string) " === ")))
+            ;; (it ()
+            ;;   (funcall (key-combo-lookup [?= ?= ?= ?=]))
+            ;;   (should (string= (buffer-string) " ==== ")))
+            )
+          (it ()
+            (key-combo-define-global (kbd "C-M-h") " == ")
+            (funcall (key-combo-lookup (kbd "C-M-h")))
+            (should (equal (buffer-string) " == ")))
+          ;; (it ()
+          ;;   (key-combo-define-global (kbd "C-M-h C-M-h") " === ")
+          ;;   (execute-kbd-macro (kbd "C-M-h C-M-h"))
+          ;;   (should (string= (buffer-string) " === "))
+          ;;   )
+          (it ()
+            (key-combo-define-global (kbd "C-M-h C-M-h") " === ")
+            (funcall (key-combo-lookup (kbd "C-M-h C-M-h")))
+            (should (string= (buffer-string) " === "))
+            )
+          (it ()
+            (should-not (key-combo-lookup [?= ?= ?= ?=])))
+          )
+        (context "pre-string & execute"
+          (include-context "insert & execute")
+          (it (:vars ((cmd "=")
+                      (pre-string "a  ")))
+            (should (string= (buffer-string) "a  = ")))
+          )
+        )
+      (context ("in c++-mode" :vars ((mode 'c++-mode)))
+        (context "execute+"
+          (it ()
+            (should (string= (key-combo-test-execute "+") " + ")))
+          (it ()
+            (should (string= (key-combo-test-execute "++") "++")))
+          ;; (it ()
+          ;;   (should (string= (key-description "+") "+")))
+          (it ()
+            (should (equal (listify-key-sequence "+") '(43))))
+          (it ()
+            (should (string= (key-description '(?+)) "+")))
+          (it ()
+            (should (equal (vector 'key-combo (intern (key-description '(?+))))
+                           [key-combo +])))
+          (it ("a")
+            (should (not (null (key-binding
+                                (vector 'key-combo
+                                        (intern (key-description '(?+)))))))))
+          (it ("c")
+            (should (not (null (lookup-key (current-local-map)
+                                (vector 'key-combo
+                                        (intern (key-description '(?+)))))))))
+          (it ("b")
+            (should (not (equal (key-binding
+                                 (vector 'key-combo
+                                         (intern (key-description '(?+)))))
+                                'key-combo-execute-orignal))))
+          (it ()
+            (should (not (null (key-combo-get-command "+")))))
+          (it ()
+            (should (not (equal (key-combo-get-command "+")
+                                'key-combo-execute-orignal))))
+          (it ("d")
+            (key-combo-define-local "a" nil)
+            ;; (key-combo-lookup "a")
+            ;; (key-binding (vector 'key-combo (intern (key-description "a"))))
+            ;; accept-default bug?
+            (should (eq (lookup-key (current-local-map)
+                                    (vector 'key-combo
+                                            (intern (key-description '(?a)))))
+                        nil))
+            (key-combo-define-local "a" "a")
+            (should (not (equal (lookup-key (current-local-map)
+                                            (vector
+                                             'key-combo
+                                             (intern (key-description '(?a)))))
+                                nil)))
+            (key-combo-define-local "a" nil)
+            )
+          )
+        (context "undo"
+          (before
+            (buffer-enable-undo))
+          (include-context "execute")
+          (it (:vars ((cmd "= C-x u")));;  C-x u
+            (should (string= (buffer-string) "=")))
+          (it (:vars ((cmd "== C-x u")))
+            (should (string= (buffer-string) " = ")))
+          )
+        (context "execute"
+          (include-context "execute")
+          (it (:vars ((cmd "=")))
+            (should (string= (buffer-string) " = ")))
+          (it (:vars ((cmd "=*")))
+            (should (string= (buffer-string) " =* ")))
+          (it (:vars ((cmd "==")))
+            (should (string= (buffer-string) " == ")))
+          (it (:vars ((cmd "===")))
+            (should (string= (buffer-string) " === ")))
+          (it ("loop" :vars ((cmd "====")))
+            (should (string= (buffer-string) " = ")))
+          (it (:vars ((cmd "=>=")))
+            (should (string= (buffer-string) " => = ")))
+          ;; (it (:vars ((cmd "==!")))
+          ;;   (should (string= (buffer-string) " ==! ")))
+          (it (:vars ((cmd "=>")))
+            (should (string= (buffer-string) " => ")))
+          (it (:vars ((cmd "*")))
+            (should (string= (buffer-string) "*")))
+          (it (:vars ((cmd "**")))
+            (should (string= (buffer-string) "**")))
+          (it (:vars ((cmd "->")))
+            (should (string= (buffer-string) "->")))
+          (it (:vars ((cmd ".")))
+            (should (string= (buffer-string) ".")))
+          ;; todo check position
+          (it (:vars ((cmd "/* RET")))
+            (should (string= (buffer-string) "/*\n  \n */")))
+          ;; todo depend on indent width
+          ;; (it (:vars ((cmd "{ RET")))
+          ;;   (should (string= (buffer-string) "{\n  \n}")))
           (setq cmd nil)
           (context ("funcall" :vars (lookup-cmd))
             (before
