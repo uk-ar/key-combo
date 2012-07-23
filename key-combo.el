@@ -124,13 +124,22 @@
   (interactive)
   (describe-bindings [key-combo]))
 
-(defun key-combo-lookup (key)
+;; key-combo-key-binding
+(defun key-combo-key-binding (key)
   ;; copy from `key-binding'
   "Return the binding for command KEY in key-combo keymaps.
 KEY is a string or vector, a sequence of keystrokes.
 The binding is probably a symbol with a function definition."
   (let ((string (key-description (vconcat key))))
     (key-binding (vector 'key-combo (intern string)))))
+
+(defun key-combo-lookup-key (keymap key)
+  ;; copy from `key-binding'
+  "Return the binding for command KEY in key-combo keymaps.
+KEY is a string or vector, a sequence of keystrokes.
+The binding is probably a symbol with a function definition."
+  (let ((string (key-description (vconcat key))))
+    (lookup-key keymap (vector 'key-combo (intern string)))))
 
 (defun key-combo-execute-orignal ()
   (interactive)
@@ -232,8 +241,9 @@ If COMMANDS is list, treated as sequential commands.
       (unless (key-combo-elementp commands)
         (error "%s is not command" commands))
       ;; regard first key as key-combo-execute-orignal
-      (let ((first (key-binding
-                    (vector 'key-combo (intern (key-description base-key))))))
+      (let ((first (lookup-key keymap
+                               (vector
+                                'key-combo (intern (key-description base-key))))))
         (when
             (and (eq (safe-length (listify-key-sequence key)) 2)
                  (null first))
@@ -488,7 +498,7 @@ which in most cases is shared with all other buffers in the same major mode.
 (defun key-combo ()
   ;; because of prefix arg
   (interactive)
-  (let ((command (key-combo-lookup key-combo-command-keys)))
+  (let ((command (key-combo-key-binding key-combo-command-keys)))
     (if (and key-combo-need-undop
              (not (eq buffer-undo-list t)))
         (key-combo-undo)
@@ -546,7 +556,7 @@ which in most cases is shared with all other buffers in the same major mode.
     (setq key-combo-command-keys
           ;; use last-command-event becase of testability
           (vconcat key-combo-command-keys command-key-vector))
-    (unless (key-combo-lookup key-combo-command-keys);;retry
+    (unless (key-combo-key-binding key-combo-command-keys);;retry
       ;; need undo?
       (if (and (not (eq 2 (length key-combo-command-keys)))
                (equal [] (delete (aref key-combo-command-keys 0)
@@ -560,7 +570,7 @@ which in most cases is shared with all other buffers in the same major mode.
             key-combo-mode
             (not (minibufferp))
             (not isearch-mode)
-            (key-combo-lookup key-combo-command-keys)
+            (key-combo-key-binding key-combo-command-keys)
             (not (and (key-combo-comment-or-stringp)
                       (memq (key-binding command-key-vector)
                             '(self-insert-command skk-insert))))
@@ -656,7 +666,7 @@ which in most cases is shared with all other buffers in the same major mode.
       (context ("define & lookup" :vars ((cmd)))
         (before
           (key-combo-define-global ">>" cmd)
-          (should (key-combo-lookup ">>")))
+          (should (key-combo-key-binding ">>")))
         (it (:vars ((cmd '(lambda()())))))
         (it (:vars ((cmd ">"))))
         ;; (it (:vars ((cmd nil))))
@@ -808,6 +818,12 @@ which in most cases is shared with all other buffers in the same major mode.
             (it ()
               ;; no error
               (with-mock
+                (mock (define-key * * *) :times 3);; 1 for recursive call?
+                (key-combo-define-local "a" '("a" "b"))))
+            (it ()
+              ;; no error
+              (with-mock
+                (mock (lookup-key * *) => t :times 2)
                 (mock (define-key * * *) :times 2);; 1 for recursive call?
                 (key-combo-define-local "a" '("a" "b")))))
             )
@@ -911,7 +927,7 @@ which in most cases is shared with all other buffers in the same major mode.
                                 'key-combo-execute-orignal))))
           (it ("d")
             (key-combo-define-local "a" nil)
-            ;; (key-combo-lookup "a")
+            ;; (key-combo-key-binding "a")
             ;; (key-binding (vector 'key-combo (intern (key-description "a"))))
             ;; accept-default bug?
             (should (eq (lookup-key (current-local-map)
@@ -971,7 +987,7 @@ which in most cases is shared with all other buffers in the same major mode.
           (setq cmd nil)
           (context ("funcall" :vars (lookup-cmd))
             (before
-              (funcall (key-combo-lookup lookup-cmd)))
+              (funcall (key-combo-key-binding lookup-cmd)))
             (it (:vars ((lookup-cmd "=")))
               (should (equal (buffer-string) " = ")))
             (it (:vars ((lookup-cmd "==")))
@@ -985,12 +1001,12 @@ which in most cases is shared with all other buffers in the same major mode.
             (it (:vars ((lookup-cmd [?= ?= ?=])))
               (should (equal (buffer-string) " === ")))
             ;; (it ()
-            ;;   (funcall (key-combo-lookup [?= ?= ?= ?=]))
+            ;;   (funcall (key-combo-key-binding [?= ?= ?= ?=]))
             ;;   (should (string= (buffer-string) " ==== ")))
             )
           (it ()
             (key-combo-define-global (kbd "C-M-h") " == ")
-            (funcall (key-combo-lookup (kbd "C-M-h")))
+            (funcall (key-combo-key-binding (kbd "C-M-h")))
             (should (equal (buffer-string) " == ")))
           ;; (it ()
           ;;   (key-combo-define-global (kbd "C-M-h C-M-h") " === ")
@@ -999,11 +1015,11 @@ which in most cases is shared with all other buffers in the same major mode.
           ;;   )
           (it ()
             (key-combo-define-global (kbd "C-M-h C-M-h") " === ")
-            (funcall (key-combo-lookup (kbd "C-M-h C-M-h")))
+            (funcall (key-combo-key-binding (kbd "C-M-h C-M-h")))
             (should (string= (buffer-string) " === "))
             )
           (it ()
-            (should-not (key-combo-lookup [?= ?= ?= ?=])))
+            (should-not (key-combo-key-binding [?= ?= ?= ?=])))
           )
         (context "pre-string & execute"
           (include-context "insert & execute")
@@ -1047,7 +1063,7 @@ which in most cases is shared with all other buffers in the same major mode.
                                 'key-combo-execute-orignal))))
           (it ("d")
             (key-combo-define-local "a" nil)
-            ;; (key-combo-lookup "a")
+            ;; (key-combo-key-binding "a")
             ;; (key-binding (vector 'key-combo (intern (key-description "a"))))
             ;; accept-default bug?
             (should (eq (lookup-key (current-local-map)
@@ -1107,7 +1123,7 @@ which in most cases is shared with all other buffers in the same major mode.
           (setq cmd nil)
           (context ("funcall" :vars (lookup-cmd))
             (before
-              (funcall (key-combo-lookup lookup-cmd)))
+              (funcall (key-combo-key-binding lookup-cmd)))
             (it (:vars ((lookup-cmd "=")))
               (should (equal (buffer-string) " = ")))
             (it (:vars ((lookup-cmd "==")))
@@ -1121,12 +1137,12 @@ which in most cases is shared with all other buffers in the same major mode.
             (it (:vars ((lookup-cmd [?= ?= ?=])))
               (should (equal (buffer-string) " === ")))
             ;; (it ()
-            ;;   (funcall (key-combo-lookup [?= ?= ?= ?=]))
+            ;;   (funcall (key-combo-key-binding [?= ?= ?= ?=]))
             ;;   (should (string= (buffer-string) " ==== ")))
             )
           (it ()
             (key-combo-define-global (kbd "C-M-h") " == ")
-            (funcall (key-combo-lookup (kbd "C-M-h")))
+            (funcall (key-combo-key-binding (kbd "C-M-h")))
             (should (equal (buffer-string) " == ")))
           ;; (it ()
           ;;   (key-combo-define-global (kbd "C-M-h C-M-h") " === ")
@@ -1135,11 +1151,11 @@ which in most cases is shared with all other buffers in the same major mode.
           ;;   )
           (it ()
             (key-combo-define-global (kbd "C-M-h C-M-h") " === ")
-            (funcall (key-combo-lookup (kbd "C-M-h C-M-h")))
+            (funcall (key-combo-key-binding (kbd "C-M-h C-M-h")))
             (should (string= (buffer-string) " === "))
             )
           (it ()
-            (should-not (key-combo-lookup [?= ?= ?= ?=])))
+            (should-not (key-combo-key-binding [?= ?= ?= ?=])))
           )
         (context "pre-string & execute"
           (include-context "insert & execute")
@@ -1511,25 +1527,25 @@ which in most cases is shared with all other buffers in the same major mode.
         (key-combo-test-command (c-mode) "===="))
       (expect " => = "
         (key-combo-test-command (c-mode) "=>="))
-      (desc "key-combo-lookup")
+      (desc "key-combo-key-binding")
       (expect " = "
         (key-combo-test-command
           (c-mode)
           (funcall
-           (key-combo-lookup "="))
+           (key-combo-key-binding "="))
           (buffer-string)))
       (expect " == "
         (key-combo-test-command
           (c-mode)
           (funcall
-           (key-combo-lookup "=="))
+           (key-combo-key-binding "=="))
           (buffer-string)))
       (expect " == "
         (key-combo-test-command
           (c-mode)
           (key-combo-define-global (kbd "C-M-h") " == ")
           (funcall
-           (key-combo-lookup (kbd "C-M-h")))
+           (key-combo-key-binding (kbd "C-M-h")))
           (buffer-string)))
       (expect " === "
         (key-combo-test-command
@@ -1542,41 +1558,41 @@ which in most cases is shared with all other buffers in the same major mode.
           (c-mode)
           (key-combo-define-global (kbd "C-M-h C-M-h") " === ")
           (funcall
-           (key-combo-lookup (kbd "C-M-h C-M-h")))
+           (key-combo-key-binding (kbd "C-M-h C-M-h")))
           (buffer-string)))
       (expect " = "
         (key-combo-test-command
           (c-mode)
           (funcall
-           (key-combo-lookup [?=]))
+           (key-combo-key-binding [?=]))
           (buffer-string)))
       (expect " == "
         (key-combo-test-command
           (c-mode)
           (funcall
-           (key-combo-lookup [?= ?=]))
+           (key-combo-key-binding [?= ?=]))
           (buffer-string)))
       (expect " => "
         (key-combo-test-command
           (c-mode)
           (funcall
-           (key-combo-lookup [?= ?>]))
+           (key-combo-key-binding [?= ?>]))
           (buffer-string)))
       (expect " === "
         (key-combo-test-command
           (c-mode)
           (funcall
-           (key-combo-lookup [?= ?= ?=]))
+           (key-combo-key-binding [?= ?= ?=]))
           (buffer-string)))
       (expect nil
-        (key-combo-lookup [?= ?= ?= ?=]))
+        (key-combo-key-binding [?= ?= ?= ?=]))
       (desc "key-combo-elementp")
       (expect t
         (every 'identity
                ;; (identity
                (mapcar (lambda(command)
                          (progn (key-combo-define-global ">>" command)
-                                (identity (key-combo-lookup ">>"))))
+                                (identity (key-combo-key-binding ">>"))))
                        '((lambda()())
                          ">"
                          ;;nil
