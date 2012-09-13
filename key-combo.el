@@ -124,22 +124,24 @@
   (interactive)
   (describe-bindings [key-combo]))
 
+(defun key-combo-make-key-vector (key)
+  (vector 'key-combo
+          (intern (key-description (vconcat key)))))
+
 ;; key-combo-key-binding
 (defun key-combo-key-binding (key)
   ;; copy from `key-binding'
   "Return the binding for command KEY in key-combo keymaps.
 KEY is a string or vector, a sequence of keystrokes.
 The binding is probably a symbol with a function definition."
-  (let ((string (key-description (vconcat key))))
-    (key-binding (vector 'key-combo (intern string)))))
+  (key-binding (key-combo-make-key-vector (vconcat key))))
 
 (defun key-combo-lookup-key (keymap key)
   ;; copy from `key-binding'
   "Return the binding for command KEY in key-combo keymaps.
 KEY is a string or vector, a sequence of keystrokes.
 The binding is probably a symbol with a function definition."
-  (let ((string (key-description (vconcat key))))
-    (lookup-key keymap (vector 'key-combo (intern string)))))
+    (lookup-key keymap (key-combo-make-key-vector (vconcat key))))
 
 (defun key-combo-execute-orignal ()
   (interactive)
@@ -193,7 +195,7 @@ The binding is probably a symbol with a function definition."
         (indent-according-to-mode)
         (indent-region p (point)))))))
 
-(defun key-combo-get-command(command)
+(defun key-combo-get-command (command)
   (unless (key-combo-elementp command)
     (error "%s is not command" command))
   (cond
@@ -242,16 +244,16 @@ If COMMANDS is list, treated as sequential commands.
         (error "%s is not command" commands))
       ;; regard first key as key-combo-execute-orignal
       (let ((first (lookup-key keymap
-                               (vector
-                                'key-combo (intern (key-description base-key))))))
+                               (key-combo-make-key-vector base-key))))
         (when
             (and (eq (safe-length (listify-key-sequence key)) 2)
                  (null first))
           (define-key keymap
-            (vector 'key-combo (intern (key-description base-key)))
-            'key-combo-execute-orignal)))
+            (key-combo-make-key-vector base-key)
+            'key-combo-execute-orignal))
+        )
       (define-key keymap
-        (vector 'key-combo (intern (key-description key)))
+        (key-combo-make-key-vector key)
         (key-combo-get-command commands))
       ))))
 
@@ -904,21 +906,21 @@ which in most cases is shared with all other buffers in the same major mode.
           (it ()
             (should (string= (key-description '(?+)) "+")))
           (it ()
-            (should (equal (vector 'key-combo (intern (key-description '(?+))))
-                           [key-combo +])))
+            (should (equal (key-combo-make-key-vector '(?+))
+                           ;;(vector 'key-combo (intern (key-description )))
+                           [key-combo _+])))
           (it ("a")
             (should (not (null (key-binding
-                                (vector 'key-combo
-                                        (intern (key-description '(?+)))))))))
+                                (key-combo-make-key-vector '(?+))
+                                )))))
           (it ("c")
             (should (not (null (lookup-key
                                 (current-local-map)
-                                (vector 'key-combo
-                                        (intern (key-description '(?+)))))))))
+                                (key-combo-make-key-vector '(?+))
+                                )))))
           (it ("b")
             (should (not (equal (key-binding
-                                 (vector 'key-combo
-                                         (intern (key-description '(?+)))))
+                                 (key-combo-make-key-vector '(?+)))
                                 'key-combo-execute-orignal))))
           (it ()
             (should (not (null (key-combo-get-command "+")))))
@@ -931,14 +933,11 @@ which in most cases is shared with all other buffers in the same major mode.
             ;; (key-binding (vector 'key-combo (intern (key-description "a"))))
             ;; accept-default bug?
             (should (eq (lookup-key (current-local-map)
-                                    (vector 'key-combo
-                                            (intern (key-description '(?a)))))
+                                    (key-combo-make-key-vector '(?a)))
                         nil))
             (key-combo-define-local "a" "a")
             (should (not (equal (lookup-key (current-local-map)
-                                            (vector
-                                             'key-combo
-                                             (intern (key-description '(?a)))))
+                                            (key-combo-make-key-vector '(?a)))
                                 nil)))
             (key-combo-define-local "a" nil)
             )
@@ -1041,20 +1040,19 @@ which in most cases is shared with all other buffers in the same major mode.
           (it ()
             (should (string= (key-description '(?+)) "+")))
           (it ()
-            (should (equal (vector 'key-combo (intern (key-description '(?+))))
-                           [key-combo +])))
+            (should (equal
+                     (key-combo-make-key-vector '(?+))
+                     [key-combo _+])))
           (it ("a")
             (should (not (null (key-binding
-                                (vector 'key-combo
-                                        (intern (key-description '(?+)))))))))
+                                (key-combo-make-key-vector '(?+)))))))
           (it ("c")
             (should (not (null (lookup-key (current-local-map)
-                                (vector 'key-combo
-                                        (intern (key-description '(?+)))))))))
+                                           (key-combo-make-key-vector '(?+))
+                                           )))))
           (it ("b")
             (should (not (equal (key-binding
-                                 (vector 'key-combo
-                                         (intern (key-description '(?+)))))
+                                 (key-combo-make-key-vector '(?+)))
                                 'key-combo-execute-orignal))))
           (it ()
             (should (not (null (key-combo-get-command "+")))))
@@ -1067,14 +1065,11 @@ which in most cases is shared with all other buffers in the same major mode.
             ;; (key-binding (vector 'key-combo (intern (key-description "a"))))
             ;; accept-default bug?
             (should (eq (lookup-key (current-local-map)
-                                    (vector 'key-combo
-                                            (intern (key-description '(?a)))))
+                                    (key-combo-make-key-vector '(?a)))
                         nil))
             (key-combo-define-local "a" "a")
             (should (not (equal (lookup-key (current-local-map)
-                                            (vector
-                                             'key-combo
-                                             (intern (key-description '(?a)))))
+                                            (key-combo-make-key-vector '(?a)))
                                 nil)))
             (key-combo-define-local "a" nil)
             )
