@@ -126,7 +126,8 @@
 
 (defun key-combo-make-key-vector (key)
   (vector 'key-combo
-          (intern (key-description (vconcat key)))))
+          ;; "_" is for error when key is " "
+          (intern (concat "_" (key-description (vconcat key))))))
 
 ;; key-combo-key-binding
 (defun key-combo-key-binding (key)
