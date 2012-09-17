@@ -647,22 +647,27 @@ which in most cases is shared with all other buffers in the same major mode.
         (before
           (insert pre-string))
         (include-context "execute"))
+
       (shared-examples "check pre-command-hook"
         (it ()
           (key-combo-mode 1)
           (should (memq 'key-combo-pre-command-function pre-command-hook)))
         (it ()
           (key-combo-mode -1)
-          (should-not (memq 'key-combo-pre-command-function pre-command-hook)))
-        )
+          (should-not (memq 'key-combo-pre-command-function pre-command-hook))))
       (shared-examples "C-a"
-        (include-context "insert & execute")
-        (setq pre-string "B\n IP")
-        (it (:vars ((cmd "C-a")))
+        (before
+          (insert "B\n IP")
+          (key-combo-mode 1))
+        ;; (include-context "insert & execute")
+        (it ()
+          (key-combo-test-execute "C-a")
           (should (equal (char-to-string (following-char)) "I")))
-        (it (:vars ((cmd "C-a C-a")))
+        (it ()
+          (key-combo-test-execute "C-a C-a")
           (should (equal (char-to-string (following-char)) " ")))
-        (it (:vars ((cmd "C-a C-a C-a")))
+        (it ()
+          (key-combo-test-execute "C-a C-a C-a")
           (should (equal (char-to-string (following-char)) "B")))
         ;; fail in temp buffer?
         ;; (it (:vars ((cmd "C-a C-a C-a C-a")))
@@ -674,13 +679,24 @@ which in most cases is shared with all other buffers in the same major mode.
         (setq key-combo-command-keys nil)
         (with-temp-buffer
           (switch-to-buffer (current-buffer))
-          (if mode (funcall mode))
           (funcall el-spec:example)))
 
       (it ()
         (should (eq key-combo-mode nil)))
+      (it "is key-combo element"
+        (should (key-combo-elementp ">"))
+        (should (key-combo-elementp '(lambda()())))
+        (should (key-combo-elementp 'nil))
+        (should (key-combo-elementp 'self-insert-command)))
+      (it "is not key-combo element"
+        (should-not (key-combo-elementp '(">")))
+        (should-not (key-combo-elementp '((lambda()()))))
+        (should-not (key-combo-elementp '(nil)))
+        (should-not (key-combo-elementp '(self-insert-command)))
+        (should-not (key-combo-elementp 'wrong-command)))
       (include-examples "check pre-command-hook")
       (include-examples "C-a")
+
       (context ("define & lookup" :vars ((cmd)))
         (before
           (key-combo-define-global ">>" cmd)
@@ -701,24 +717,8 @@ which in most cases is shared with all other buffers in the same major mode.
         (it (:vars ((cmd '(self-insert-command ">")))))
         (it (:vars ((cmd '(self-insert-command self-insert-command)))))
         )
-      (context ("key-combo element" :vars ((cmd)))
-        (before
-          (should (key-combo-elementp cmd)))
-        (it (:vars ((cmd '(lambda()())))))
-        (it (:vars ((cmd ">"))))
-        (it (:vars ((cmd nil))))
-        (it (:vars ((cmd 'self-insert-command))))
-        )
-      (context ("not key-combo element" :vars ((cmd)))
-        (before
-          (should-not (key-combo-elementp cmd)))
-        (it (:vars ((cmd '(">")))))
-        (it (:vars ((cmd '((lambda()()))))))
-        (it (:vars ((cmd '(nil)))))
-        (it (:vars ((cmd '(self-insert-command)))))
-        (it (:vars ((cmd 'wrong-command))))
-        )
-      (context ("in default-mode" :vars ((mode)))
+
+      (context "in default-mode"
         (context "execute"
           (include-context "execute")
           (it (:vars ((cmd ">")))
@@ -764,7 +764,11 @@ which in most cases is shared with all other buffers in the same major mode.
             (should (eq (key-combo-define-global "a" nil) nil)))
           (it ()
             (should (eq (key-combo-define-global (kbd "C-M-g") nil) nil)))))
-      (context ("in emacs-lisp-mode" :vars ((mode 'emacs-lisp-mode)))
+      (context "in emacs-lisp-mode"
+        (before
+          (emacs-lisp-mode))
+        (it ()
+          (key-combo-define-global (kbd "M-s") "a"))
         (it ()
           (should-not (key-combo-comment-or-stringp)))
         (it ()
@@ -805,8 +809,6 @@ which in most cases is shared with all other buffers in the same major mode.
             (should (string= (buffer-string) " . ")))
           (it (:vars ((cmd ";")))
             (should (string= (buffer-string) ";; ")))
-          (it (:vars ((cmd ";;")))
-            (should (string= (buffer-string) ";;; ")))
           (it (:vars ((cmd ";.")))
             (should (string= (buffer-string) ";; .")))
           (it (:vars ((cmd ";,")))
@@ -905,8 +907,15 @@ which in most cases is shared with all other buffers in the same major mode.
           )
         (include-examples "C-a")
         (include-examples "check pre-command-hook"))
-      (context ("in ruby" :vars ((mode 'ruby-mode)))
+      (context "in ruby"
+        (before
+          (ruby-mode)
+          (when (boundp auto-complete-mode)
+            (auto-complete-mode -1)))
         (include-context "execute")
+        ;; bug?for auto-complete completion
+        (it (:vars ((cmd ".")))
+          (should (string= (buffer-string) ".")))
         (it (:vars ((cmd "..")))
           (should (string= (buffer-string) "..")))
         (it (:vars ((cmd "...")))
@@ -917,7 +926,9 @@ which in most cases is shared with all other buffers in the same major mode.
           (should (string= (buffer-string) "**")))
         (it (:vars ((cmd "||=")))
           (should (string= (buffer-string) " ||= "))))
-      (context ("in c-mode" :vars ((mode 'c-mode)))
+      (context "in c-mode"
+        (before
+          (c-mode))
         (context "execute+"
           (it ()
             (should (string= (key-combo-test-execute "+") " + ")))
@@ -993,6 +1004,10 @@ which in most cases is shared with all other buffers in the same major mode.
           ;;   (should (string= (buffer-string) " ==! ")))
           (it (:vars ((cmd "=>")))
             (should (string= (buffer-string) " => ")))
+          (it (:vars ((cmd "/")))
+            (should (string= (buffer-string) "/")))
+          (it (:vars ((cmd "/ SPC")))
+            (should (string= (buffer-string) " / ")))
           (it (:vars ((cmd "*")))
             (should (string= (buffer-string) "*")))
           (it (:vars ((cmd "**")))
@@ -1051,7 +1066,9 @@ which in most cases is shared with all other buffers in the same major mode.
             (should (string= (buffer-string) "a  = ")))
           )
         )
-      (context ("in c++-mode" :vars ((mode 'c++-mode)))
+      (context "in c++-mode"
+        (before
+          (c++-mode))
         (context "execute+"
           (it ()
             (should (string= (key-combo-test-execute "+") " + ")))
