@@ -309,11 +309,18 @@ which in most cases is shared with all other buffers in the same major mode.
     inferior-gauche-mode-hook
     scheme-mode-hook))
 
+(defun key-combo-read-kbd-macro (start)
+  (when (or (equal (elt start 0) ?\ )
+            (equal (elt start (1- (length start))) ?\ ))
+    ;; (error "To bind the key SPC, use \" \", not [SPC]")
+    (error "To bind the key SPC, use SPC, not \" \""))
+  (read-kbd-macro start))
+
 (defmacro define-key-combo-load (name)
   "define-key-combo-load is deprecated"
   `(defun ,(intern (concat "key-combo-load-" name "-default")) ()
      (dolist (key ,(intern (concat "key-combo-" name "-default")))
-       (key-combo-define-local (read-kbd-macro (car key)) (cdr key)))
+       (key-combo-define-local (key-combo-read-kbd-macro (car key)) (cdr key)))
      ))
 
 ;; for algol like language
@@ -462,7 +469,7 @@ which in most cases is shared with all other buffers in the same major mode.
 
 (defun key-combo-load-default-1 (map keys)
   (dolist (key keys)
-    (key-combo-define map (read-kbd-macro (car key)) (cdr key))))
+    (key-combo-define map (key-combo-read-kbd-macro (car key)) (cdr key))))
 
 (declare-function key-combo-set-start-position "key-combo")
 (declare-function key-combo-return "key-combo")
@@ -621,7 +628,7 @@ which in most cases is shared with all other buffers in the same major mode.
 
 (defun key-combo-test-execute (cmd)
   (key-combo-mode 1)
-  (execute-kbd-macro (read-kbd-macro cmd))
+  (execute-kbd-macro (key-combo-read-kbd-macro cmd))
   (substring-no-properties (buffer-string))
   )
 
@@ -631,7 +638,7 @@ which in most cases is shared with all other buffers in the same major mode.
       (shared-context ("execute" :vars (cmd))
         (around
           (key-combo-mode 1)
-          (if cmd (execute-kbd-macro (read-kbd-macro cmd)))
+          (if cmd (execute-kbd-macro (key-combo-read-kbd-macro cmd)))
           (funcall el-spec:example)))
       (shared-context ("insert & execute" :vars (pre-string))
         (before
@@ -1227,7 +1234,7 @@ which in most cases is shared with all other buffers in the same major mode.
 (defmacro key-combo-test-command (&rest body)
   (if (stringp (car (last body)))
       `(key-combo-test-command-1
-        (execute-kbd-macro (read-kbd-macro (progn ,@body)))
+        (execute-kbd-macro (key-combo-read-kbd-macro (progn ,@body)))
         (buffer-substring-no-properties (point-min) (point-max)))
     `(key-combo-test-command-1 ,@body)
     ))
