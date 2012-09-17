@@ -290,7 +290,8 @@ which in most cases is shared with all other buffers in the same major mode.
     ("SPC ." . " . ")
     (","  . (key-combo-execute-orignal))
     (",@" . " ,@");; for macro
-    (";"  . (";; " ";;; " "; "))
+    (";"  . ";; ")
+    ;; (";"  . (";; " ";;; " "; ")) ;cannot use because of comment
     (";=" . ";=> ")
     ("="  . ("= " "eq " "equal "))
     (">=" . ">= ")
@@ -388,7 +389,8 @@ which in most cases is shared with all other buffers in the same major mode.
     ("|=" . " |= ");; for c
     ("||=" . " ||= ")                   ; for ruby
     ;; ("/" . (" / " "// " "/`!!'/")) ;; devision,comment start or regexp
-    ("/" . (" / " "// "))
+    ("/" . (key-combo-execute-orignal))
+    ("/ SPC" . " / ")
     ("/=" . " /= ")
     ("*/" . "*/")
     ("/*" . "/* `!!' */")
