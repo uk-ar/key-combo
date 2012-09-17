@@ -263,7 +263,7 @@ that local binding will continue to shadow any global binding
 that you make with this function.
 "
   ;;(interactive "sSet key chord globally (2 keys): \nCSet chord \"%s\" to command: ")
-  (key-combo-define (current-global-map) keys command))
+  (key-combo-define global-key-combo-mode-map keys command))
 
 (defun key-combo-define-local (keys command)
   "Give KEY a local binding as COMMAND.\n
@@ -565,7 +565,8 @@ which in most cases is shared with all other buffers in the same major mode.
 (define-global-minor-mode global-key-combo-mode
   key-combo-mode key-combo-mode-maybe
   ;; :init-value t bug?
-  :group 'key-combo)
+  :group 'key-combo
+  :keymap (make-sparse-keymap))
 
 (defun key-combo-pre-command-function ()
   (let ((command-key-vector (this-command-keys-vector))
