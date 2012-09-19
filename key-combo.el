@@ -144,10 +144,12 @@ KEY is a string or vector, a sequence of keystrokes.
 The binding is probably a symbol with a function definition."
     (lookup-key keymap (key-combo-make-key-vector (vconcat key))))
 
-(defun key-combo-execute-orignal ()
+(defun key-combo-execute-original ()
   (interactive)
   (call-interactively (key-binding (this-command-keys-vector)))
   )
+
+(defalias 'key-combo-execute-orignal 'key-combo-execute-original)
 
 ;; should be replace by union
 (defun key-combo-memq (a b)
@@ -240,7 +242,7 @@ If COMMANDS is list, treated as sequential commands.
      (t
       (unless (key-combo-elementp commands)
         (error "%s is not command" commands))
-      ;; regard first key as key-combo-execute-orignal
+      ;; regard first key as key-combo-execute-original
       (let ((first (lookup-key keymap
                                (key-combo-make-key-vector base-key))))
         (when
@@ -248,7 +250,7 @@ If COMMANDS is list, treated as sequential commands.
                  (null first))
           (define-key keymap
             (key-combo-make-key-vector base-key)
-            'key-combo-execute-orignal))
+            'key-combo-execute-original))
         )
       (define-key keymap
         (key-combo-make-key-vector key)
@@ -284,22 +286,22 @@ which in most cases is shared with all other buffers in the same major mode.
     ))
 
 (defvar key-combo-lisp-default
-  '(("."  . (key-combo-execute-orignal))
+  '(("."  . (key-combo-execute-original))
     (". SPC" . " . ")
-    ("SPC"  . (key-combo-execute-orignal))
+    ("SPC"  . (key-combo-execute-original))
     ("SPC ." . " . ")
-    (","  . (key-combo-execute-orignal))
+    (","  . (key-combo-execute-original))
     (",@" . " ,@");; for macro
     (";"  . ";; ")
     ;; (";"  . (";; " ";;; " "; ")) ;cannot use because of comment
     (";=" . ";=> ")
     ("="  . ("= " "eq " "equal "))
     (">=" . ">= ")
-    ("C-M-x" . (key-combo-execute-orignal
+    ("C-M-x" . (key-combo-execute-original
                 (lambda ()
                   (let ((current-prefix-arg '(4)))
                     (call-interactively 'eval-defun)))));; lamda for message
-    ("-"  . (key-combo-execute-orignal));; for symbol name
+    ("-"  . (key-combo-execute-original));; for symbol name
     ;; ("/" . ("/`!!'/" "/* `!!' */") );;for regexp, comment
     ))
 
@@ -349,7 +351,7 @@ which in most cases is shared with all other buffers in the same major mode.
     ("-"  . (" - " "--"))               ;undo when unary operator
     ("-=" . " -= ")
     ("->" . " -> ");; for haskell,coffee script. overwrite in c
-    (">"  . (key-combo-execute-orignal " >> "))
+    (">"  . (key-combo-execute-original " >> "))
     ;; " > " should be bind in flex-autopair
     (">=" . " >= ")
     (">>=" . " >>= ")
@@ -357,14 +359,14 @@ which in most cases is shared with all other buffers in the same major mode.
     ("%="  . " %= ")
     ("^"  . " ^ ");; XOR for c
     ("^="  . " ^= ");; for c
-    ("!" . key-combo-execute-orignal)
+    ("!" . key-combo-execute-original)
     ;; NOT for c
     ;; don't use " !" because of ruby symbol
     ;; and unary operator
     ("!="  . " != " ) ;;" !== " for js and php
     ("!==" . " !== ") ;;" !== " for js and php
     ("!~" . " !~ ")   ; for ruby
-    ("~" . key-combo-execute-orignal)
+    ("~" . key-combo-execute-original)
     ;; for unary operator
     ("::" . " :: ") ;; for haskell
     ;; (":" . ":");;for ruby symbol
@@ -377,7 +379,7 @@ which in most cases is shared with all other buffers in the same major mode.
     ("**=" . " **=" )                     ;for power
     ;; ("?" . "? `!!' :"); ternary operator should be bound in yasnippet?
     ;; ("?=");; for coffeescript?
-    ("<" . (key-combo-execute-orignal " << "))
+    ("<" . (key-combo-execute-original " << "))
     ;; " < " should be bound in flex-autopair
     ("<=" . " <= ")
     ;; ("<?" . "<?`!!'?>");; for what?
@@ -389,14 +391,14 @@ which in most cases is shared with all other buffers in the same major mode.
     ("|=" . " |= ");; for c
     ("||=" . " ||= ")                   ; for ruby
     ;; ("/" . (" / " "// " "/`!!'/")) ;; devision,comment start or regexp
-    ("/" . (key-combo-execute-orignal))
+    ("/" . (key-combo-execute-original))
     ("/ SPC" . " / ")
     ("/=" . " /= ")
     ("*/" . "*/")
     ("/*" . "/* `!!' */")
     ("/* RET" . "/*\n`!!'\n*/");; add *? m-j
     ;; ("/* RET" . "/*\n*`!!'\n*/");; ToDo:change style by valiable
-    ("{" . (key-combo-execute-orignal))
+    ("{" . (key-combo-execute-original))
     ("{ RET" . "{\n`!!'\n}")
     )
   "Default binding which enabled by `key-combo-common-mode-hooks'"
@@ -956,12 +958,12 @@ which in most cases is shared with all other buffers in the same major mode.
           (it ("b")
             (should (not (equal (key-binding
                                  (key-combo-make-key-vector '(?+)))
-                                'key-combo-execute-orignal))))
+                                'key-combo-execute-original))))
           (it ()
             (should (not (null (key-combo-get-command "+")))))
           (it ()
             (should (not (equal (key-combo-get-command "+")
-                                'key-combo-execute-orignal))))
+                                'key-combo-execute-original))))
           (it ("d")
             (key-combo-define-local "a" nil)
             ;; (key-combo-key-binding "a")
@@ -1094,12 +1096,12 @@ which in most cases is shared with all other buffers in the same major mode.
           (it ("b")
             (should (not (equal (key-binding
                                  (key-combo-make-key-vector '(?+)))
-                                'key-combo-execute-orignal))))
+                                'key-combo-execute-original))))
           (it ()
             (should (not (null (key-combo-get-command "+")))))
           (it ()
             (should (not (equal (key-combo-get-command "+")
-                                'key-combo-execute-orignal))))
+                                'key-combo-execute-original))))
           (it ("d")
             (key-combo-define-local "a" nil)
             ;; (key-combo-key-binding "a")
