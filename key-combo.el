@@ -631,11 +631,10 @@ which in most cases is shared with all other buffers in the same major mode.
              ))
           )))
 
-(defun key-combo-test-execute (cmd)
+(defun key-combo-test-helper-execute (cmd)
   (key-combo-mode 1)
   (execute-kbd-macro (key-combo-read-kbd-macro cmd))
-  (substring-no-properties (buffer-string))
-  )
+  (substring-no-properties (buffer-string)))
 
 (dont-compile
   (when (fboundp 'describe)
@@ -663,13 +662,13 @@ which in most cases is shared with all other buffers in the same major mode.
           (key-combo-mode 1))
         ;; (include-context "insert & execute")
         (it ()
-          (key-combo-test-execute "C-a")
+          (key-combo-test-helper-execute "C-a")
           (should (equal (char-to-string (following-char)) "I")))
         (it ()
-          (key-combo-test-execute "C-a C-a")
+          (key-combo-test-helper-execute "C-a C-a")
           (should (equal (char-to-string (following-char)) " ")))
         (it ()
-          (key-combo-test-execute "C-a C-a C-a")
+          (key-combo-test-helper-execute "C-a C-a C-a")
           (should (equal (char-to-string (following-char)) "B")))
         ;; fail in temp buffer?
         ;; (it (:vars ((cmd "C-a C-a C-a C-a")))
@@ -722,14 +721,11 @@ which in most cases is shared with all other buffers in the same major mode.
 
       (context "in default-mode"
         (context "execute"
-          (include-context "execute")
-          (it (:vars ((cmd ">")))
-            (should (string= (buffer-string) ">")))
-          (it (:vars ((cmd "=")))
-            (should (string= (buffer-string) "="))))
+          (it ()
+            (should (string= (key-combo-test-helper-execute ">") ">")))
+          (it ()
+            (should (string= (key-combo-test-helper-execute "=") "="))))
         (context ("no execute" :vars ((cmd nil)))
-          (include-context "execute")
-          ;; symbol-macrolet buffer-string
           (it ()
             (key-combo-command-execute (lambda () (insert "a")))
             (should (string= (buffer-string) "a")))
@@ -933,9 +929,9 @@ which in most cases is shared with all other buffers in the same major mode.
           (c-mode))
         (context "execute+"
           (it ()
-            (should (string= (key-combo-test-execute "+") " + ")))
+            (should (string= (key-combo-test-helper-execute "+") " + ")))
           (it ()
-            (should (string= (key-combo-test-execute "++") "++")))
+            (should (string= (key-combo-test-helper-execute "++") "++")))
           ;; (it ()
           ;;   (should (string= (key-description "+") "+")))
           (it ()
@@ -1073,9 +1069,9 @@ which in most cases is shared with all other buffers in the same major mode.
           (c++-mode))
         (context "execute+"
           (it ()
-            (should (string= (key-combo-test-execute "+") " + ")))
+            (should (string= (key-combo-test-helper-execute "+") " + ")))
           (it ()
-            (should (string= (key-combo-test-execute "++") "++")))
+            (should (string= (key-combo-test-helper-execute "++") "++")))
           ;; (it ()
           ;;   (should (string= (key-description "+") "+")))
           (it ()
