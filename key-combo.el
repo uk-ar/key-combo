@@ -636,6 +636,10 @@ which in most cases is shared with all other buffers in the same major mode.
   (execute-kbd-macro (key-combo-read-kbd-macro cmd))
   (substring-no-properties (buffer-string)))
 
+(defun key-combo-test-helper-define-lookup (cmd)
+  (key-combo-define-global ">>" cmd)
+  (key-combo-key-binding ">>"))
+
 (dont-compile
   (when (fboundp 'describe)
     (describe ("key-combo in temp-buffer" :vars ((mode)))
@@ -697,27 +701,26 @@ which in most cases is shared with all other buffers in the same major mode.
         (should-not (key-combo-elementp 'wrong-command)))
       (include-examples "check pre-command-hook")
       (include-examples "C-a")
-
-      (context ("define & lookup" :vars ((cmd)))
-        (before
-          (key-combo-define-global ">>" cmd)
-          (should (key-combo-key-binding ">>")))
-        (it (:vars ((cmd '(lambda()())))))
-        (it (:vars ((cmd ">"))))
-        ;; (it (:vars ((cmd nil))))
-        (it (:vars ((cmd 'self-insert-command))))
-        (it (:vars ((cmd '((lambda()()))))))
-        (it (:vars ((cmd '(">")))))
-        ;; (it (:vars ((cmd (nil)))))
-        (it (:vars ((cmd '(self-insert-command)))))
-        (it (:vars ((cmd '(">" ">")))))
-        (it (:vars ((cmd '(">" (lambda()()))))))
-        (it (:vars ((cmd '((lambda()()) ">")))))
-        (it (:vars ((cmd '((lambda()()) (lambda()()))))))
-        (it (:vars ((cmd '(">" self-insert-command)))))
-        (it (:vars ((cmd '(self-insert-command ">")))))
-        (it (:vars ((cmd '(self-insert-command self-insert-command)))))
-        )
+      (it "can define & lookup"
+          (should (key-combo-test-helper-define-lookup '(lambda()())))
+          (should (key-combo-test-helper-define-lookup ">"))
+          (should (key-combo-test-helper-define-lookup 'self-insert-command))
+          (should (key-combo-test-helper-define-lookup '((lambda()()))))
+          (should (key-combo-test-helper-define-lookup '(">")))
+          (should (key-combo-test-helper-define-lookup '(self-insert-command)))
+          (should (key-combo-test-helper-define-lookup '(">" ">")))
+          (should (key-combo-test-helper-define-lookup '(">" (lambda()()))))
+          (should (key-combo-test-helper-define-lookup '((lambda()()) ">")))
+          (should
+           (key-combo-test-helper-define-lookup '((lambda()()) (lambda()()))))
+          (should
+           (key-combo-test-helper-define-lookup '(">" self-insert-command)))
+          (should
+           (key-combo-test-helper-define-lookup '(self-insert-command ">")))
+          (should
+           (key-combo-test-helper-define-lookup
+            '(self-insert-command self-insert-command)))
+          )
 
       (context "in default-mode"
         (context "execute"
