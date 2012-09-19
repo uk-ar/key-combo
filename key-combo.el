@@ -506,7 +506,7 @@ which in most cases is shared with all other buffers in the same major mode.
     (call-interactively command))
    ((functionp command)
     (funcall command))
-   (t (error "%s is not command" commands))
+   (t (error "%s is not command" command))
    )
   (undo-boundary)
   )
