@@ -689,7 +689,15 @@ which in most cases is shared with all other buffers in the same major mode.
         (setq key-combo-command-keys nil)
         (with-temp-buffer
           (switch-to-buffer (current-buffer))
-          (funcall el-spec:example)))
+          (let ((key-combo-mode-map
+                 (copy-keymap key-combo-mode-map))
+                (global-map-org (current-global-map))
+                (global-map (copy-keymap (current-global-map))))
+            (unwind-protect
+                (progn
+                  (use-global-map global-map)
+                  (funcall el-spec:example))
+              (use-global-map global-map-org)))))
 
       (it ()
         (should (eq key-combo-mode nil)))
@@ -1052,6 +1060,11 @@ which in most cases is shared with all other buffers in the same major mode.
             (key-combo-define-global (kbd "C-M-h") " == ")
             (key-combo-command-execute (key-combo-key-binding (kbd "C-M-h")))
             (should (equal (buffer-string) " == ")))
+          (it ()
+            (should-not
+             (equal
+              (key-combo-lookup-key (current-global-map) (kbd "C-M-h"))
+              " == ")))
           ;; (it ()
           ;;   (key-combo-define-global (kbd "C-M-h C-M-h") " === ")
           ;;   (execute-kbd-macro (kbd "C-M-h C-M-h"))
@@ -1184,6 +1197,7 @@ which in most cases is shared with all other buffers in the same major mode.
             )
           (it ()
             (key-combo-define-global (kbd "C-M-h") " == ")
+            (should (key-combo-key-binding (kbd "C-M-h")))
             (key-combo-command-execute (key-combo-key-binding (kbd "C-M-h")))
             (should (equal (buffer-string) " == ")))
           ;; (it ()
@@ -1193,7 +1207,8 @@ which in most cases is shared with all other buffers in the same major mode.
           ;;   )
           (it ()
             (key-combo-define-global (kbd "C-M-h C-M-h") " === ")
-            (key-combo-command-execute (key-combo-key-binding (kbd "C-M-h C-M-h")))
+            (key-combo-command-execute
+             (key-combo-key-binding (kbd "C-M-h C-M-h")))
             (should (string= (buffer-string) " === "))
             )
           (it ()
