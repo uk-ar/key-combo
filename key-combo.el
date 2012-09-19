@@ -265,7 +265,7 @@ that local binding will continue to shadow any global binding
 that you make with this function.
 "
   ;;(interactive "sSet key chord globally (2 keys): \nCSet chord \"%s\" to command: ")
-  (key-combo-define global-key-combo-mode-map keys command))
+  (key-combo-define (current-global-map) keys command))
 
 (defun key-combo-define-local (keys command)
   "Give KEY a local binding as COMMAND.\n
@@ -541,6 +541,7 @@ which in most cases is shared with all other buffers in the same major mode.
   "Toggle key combo."
   :lighter " KC"
   :group 'key-combo
+  :keymap (make-sparse-keymap)
   (if key-combo-mode
       (add-hook 'pre-command-hook
                 ;;post-self-insert-hook
@@ -567,8 +568,7 @@ which in most cases is shared with all other buffers in the same major mode.
 (define-global-minor-mode global-key-combo-mode
   key-combo-mode key-combo-mode-maybe
   ;; :init-value t bug?
-  :group 'key-combo
-  :keymap (make-sparse-keymap))
+  :group 'key-combo)
 
 (defun key-combo-pre-command-function ()
   (let ((command-key-vector (this-command-keys-vector))
@@ -665,6 +665,11 @@ which in most cases is shared with all other buffers in the same major mode.
           (insert "B\n IP")
           (key-combo-mode 1))
         ;; (include-context "insert & execute")
+        (it ()
+          (should (key-combo-key-binding (kbd "C-a C-a"))))
+        ;; (it ()
+        ;;   (key-combo-mode -1)
+        ;;   (should-not (key-combo-key-binding (kbd "C-a C-a"))))
         (it ()
           (key-combo-test-helper-execute "C-a")
           (should (equal (char-to-string (following-char)) "I")))
