@@ -27,9 +27,7 @@
 (unless (locate-library "ert")
   (add-to-list
    'load-path
-   (key-combo-test-join-path key-combo-root-dir "lib" "ert" "lisp" "emacs-lisp"))
-  (require 'ert-batch)
-  (require 'ert-ui))
+   (key-combo-test-join-path key-combo-root-dir "lib" "ert" "lisp" "emacs-lisp")))
 
 ;; Use el-spec
 (add-to-list
