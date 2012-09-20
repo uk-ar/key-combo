@@ -1,7 +1,8 @@
-
 (require 'ert)
+(require 'el-spec)
 
 (require 'key-combo)
+(key-combo-load-default)
 
 (defun test1()
   (interactive)
@@ -257,15 +258,17 @@
                 (key-combo-define-local "a" '("a" "b")))))
           )
         (context "in skk-mode"
-          (before
-            (skk-mode 1)
-            (setq this-command 'skk-insert)
-            (insert ";")
+          (when (require 'skk-autoloads nil t)
+            (before
+              (skk-mode 1)
+              (setq this-command 'skk-insert)
+              (insert ";")
+              )
+            (it ()
+              (should (string= (key-combo-test-helper-execute ",") ";、")))
+            (it ()
+              (should (string= (key-combo-test-helper-execute ".") ";。")))
             )
-          (it ()
-            (should (string= (key-combo-test-helper-execute ",") ";、")))
-          (it ()
-            (should (string= (key-combo-test-helper-execute ".") ";。")))
           )
         (context ("insert & move & execute" :vars (pos pre-string))
           (it ()
@@ -310,7 +313,7 @@
         (before
           (key-combo-mode 1)
           (ruby-mode)
-          (when (boundp auto-complete-mode)
+          (when (boundp 'auto-complete-mode)
             (auto-complete-mode -1)))
         ;; (include-context "execute")
         ;; bug?for auto-complete completion
@@ -623,4 +626,5 @@
             )
           )
         )
-      )))
+      )
+))
