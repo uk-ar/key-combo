@@ -31,6 +31,10 @@
   (require 'ert-batch)
   (require 'ert-ui))
 
+;; Use el-spec
+(add-to-list
+ 'load-path
+ (key-combo-test-join-path key-combo-root-dir "lib" "el-spec"))
 
 ;; Load tests
 (load "key-combo-test")
