@@ -30,17 +30,6 @@
 (dont-compile
   (when (fboundp 'describe)
     (describe ("key-combo in temp-buffer" :vars ((mode)))
-      (shared-context ("execute" :vars (cmd))
-        (around
-          (key-combo-mode 1)
-          (if cmd (execute-kbd-macro (key-combo-read-kbd-macro cmd)))
-          (funcall el-spec:example)))
-      (shared-context ("insert & execute" :vars (pre-string))
-        (before
-          (key-combo-mode 1)
-          (insert pre-string))
-        (include-context "execute"))
-
       (shared-examples "check pre-command-hook"
         (it ()
           (key-combo-mode 1)
@@ -128,7 +117,7 @@
             (should (string= (key-combo-test-helper-execute ">") ">")))
           (it ()
             (should (string= (key-combo-test-helper-execute "=") "="))))
-        (context ("no execute" :vars ((cmd nil)))
+        (context "no execute"
           (it ()
             (key-combo-command-execute (lambda () (insert "a")))
             (should (string= (buffer-string) "a")))
@@ -315,7 +304,6 @@
           (ruby-mode)
           (when (boundp 'auto-complete-mode)
             (auto-complete-mode -1)))
-        ;; (include-context "execute")
         ;; bug?for auto-complete completion
         (it ()
           (should (string= (key-combo-test-helper-execute ".") ".")))
@@ -397,7 +385,6 @@
             (should (string= (key-combo-test-helper-execute "== C-x u") " = ")))
           )
         (context "execute"
-          ;; (include-context "execute")
           (it ()
             (should (string= (key-combo-test-helper-execute "=") " = ")))
           (it ()
@@ -434,7 +421,7 @@
           ;; (it ()
           ;; (should (string= (key-combo-test-helper-execute "{ RET") "{\n  \n}"))
           )
-        (context ("funcall" :vars (lookup-cmd))
+        (context "funcall"
           ;; (before
           ;;   (key-combo-command-execute (key-combo-key-binding lookup-cmd)))
           (it ()
