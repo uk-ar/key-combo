@@ -88,8 +88,6 @@
         (should-not (key-combo-elementp '(nil)))
         (should-not (key-combo-elementp '(self-insert-command)))
         (should-not (key-combo-elementp 'wrong-command)))
-      (include-examples "check pre-command-hook")
-      (include-examples "C-a")
       (it "can define & lookup"
         (should (key-combo-test-helper-define-lookup '(lambda()())))
         (should (key-combo-test-helper-define-lookup ">"))
@@ -110,6 +108,8 @@
          (key-combo-test-helper-define-lookup
           '(self-insert-command self-insert-command)))
         )
+      (include-examples "check pre-command-hook")
+      (include-examples "C-a")
 
       (context "in default-mode"
         (context "execute"
@@ -468,13 +468,11 @@
             )
           (it ()
             (should-not (key-combo-key-binding [?= ?= ?= ?=])))
-          (context "pre-string & execute"
-            (include-context "insert & execute")
-            (it (:vars ((cmd "=")
-                        (pre-string "a  ")))
-              (should (string= (buffer-string) "a  = ")))
-            )
+          (it ()
+            (insert "a  ")
+            (should (string= (key-combo-test-helper-execute "=") "a  = "))
+            (should (string= (buffer-string) "a  = ")))
           )
         )
       )
-))
+    ))
