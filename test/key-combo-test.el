@@ -1,17 +1,23 @@
 (require 'ert)
 (require 'el-spec)
+(require 'test-double)
 
 (require 'key-combo)
 (key-combo-load-default)
 
-(defun test1()
+(defun test1 ()
   (interactive)
   (message "test1")
   )
 
-(defun test2()
+(defun test2 ()
   (interactive)
   (message "test2")
+  )
+
+(defun test3 ()
+  (interactive)
+  (message "test3")
   )
 
 (defun key-combo-test-helper-execute (cmd)
@@ -55,6 +61,10 @@
         (it ()
           (key-combo-test-helper-execute "C-a C-a C-a")
           (should (equal (char-to-string (following-char)) "B")))
+        (it ()
+          (should (memq 'key-combo-pre-command-function pre-command-hook))
+          (key-combo-test-helper-execute "C-a C-p")
+          (should (memq 'key-combo-pre-command-function pre-command-hook)))
         ;; fail in temp buffer?
         ;; (it (:vars ((cmd "C-a C-a C-a C-a")))
         ;;   (backward-char)
@@ -65,10 +75,15 @@
         (setq key-combo-command-keys nil)
         (with-temp-buffer
           (switch-to-buffer (current-buffer))
-          (let ((key-combo-mode-map
-                 (copy-keymap key-combo-mode-map))
+          (let ((key-combo-prefix-mode-map (make-sparse-keymap))
+                (key-combo-prefix-mode-map-alist nil)
+                ;; (key-combo-mode-map
+                ;;  (copy-keymap key-combo-mode-map))
                 (global-map-org (current-global-map))
-                (global-map (copy-keymap (current-global-map))))
+                (global-map
+                 (let ((map (make-sparse-keymap)))
+                   (set-keymap-parent map (current-global-map))
+                   map)))
             (unwind-protect
                 (progn
                   (use-global-map global-map)
@@ -112,6 +127,173 @@
       (include-examples "C-a")
 
       (context "in default-mode"
+        (context "with mock"
+          (when (require 'el-mock nil t)
+            (context "prefix"
+              (it ()
+                ;; no error
+                (with-mock2
+                  (defmock test3 () (interactive))
+                  (global-set-key (kbd "M-s z") 'test3)
+                  (execute-kbd-macro (kbd "M-s z"))
+                  (should (eq (el-spec:called-count 'test3) 1))
+                  ))
+              (it ()
+                ;; no error
+                (with-mock2
+                  (should (keymapp (key-binding (kbd "M-s"))));; prefix
+                  (defmock test1 () (interactive))
+                  (defmock test2 () (interactive))
+                  ;; (global-set-key (kbd "M-s") 'hoge);workaround
+                  (key-combo-define-global (kbd "M-s") 'test1)
+                  (key-combo-define-global (kbd "M-s a") 'test2)
+                  (execute-kbd-macro (kbd "M-s a"))
+                  (should (eq (el-spec:called-count 'test1) 1))
+                  (should (eq (el-spec:called-count 'test2) 1))
+                  ))
+              (it ()
+                ;; no error
+                (with-mock2
+                  (should (keymapp (key-binding (kbd "M-s"))));; prefix
+                  (defmock test1 () (interactive))
+                  (defmock test2 () (interactive))
+                  (key-combo-define-global (kbd "a") 'test1)
+                  (key-combo-define-global (kbd "a M-s") 'test2)
+                  (execute-kbd-macro (kbd "a M-s"))
+                  (should (eq (el-spec:called-count 'test1) 1))
+                  (should (eq (el-spec:called-count 'test2) 1))
+                  ))
+              (it ()
+                ;; no error
+                (with-mock2
+                  (should-not (keymapp (key-binding (kbd "M-a"))));; prefix
+                  (defmock test1 () (interactive))
+                  (defmock test2 () (interactive))
+                  (key-combo-define-global (kbd "M-a") 'test1)
+                  (key-combo-define-global (kbd "M-a a") 'test2)
+                  (execute-kbd-macro (kbd "M-a a"))
+                  (should (eq (el-spec:called-count 'test1) 1))
+                  (should (eq (el-spec:called-count 'test2) 1))
+                  ))
+              (it ()
+                ;; no error
+                (with-mock2
+                  (defmock test1 () (interactive))
+                  (defmock test2 () (interactive))
+                  (key-combo-define-global (kbd "M-a") 'test1)
+                  (key-combo-define-global (kbd "M-a M-a") 'test2)
+                  (execute-kbd-macro (kbd "M-a M-a"))
+                  (should (eq (el-spec:called-count 'test1) 1))
+                  (should (eq (el-spec:called-count 'test2) 1))
+                  ))
+              (it ()
+                (with-mock2
+                  (defmock define-key (keymap key def))
+                  (key-combo-define-global (kbd "aa") 'test1)
+                  (should (eq (el-spec:called-count 'define-key) 2))
+                  (should (equal (mapcar '(lambda (x) (cdr x))
+                                         (el-spec:args-for-call 'define-key))
+                                 '(([key-combo _a]
+                                    key-combo-execute-original)
+                                   ([key-combo _a\ a]
+                                    test1))))
+                  ))
+              (it ()
+                (with-mock2
+                  (should (keymapp (key-binding (kbd "M-s"))));; prefix
+                  (defmock define-key (keymap key def)
+                           (funcall (el-spec:get-original-func 'define-key)
+                                    keymap key def))
+                  (defmock test1 () (interactive))
+                  (key-combo-define-global (kbd "M-s a") 'test1)
+                  ;; (should (eq (el-spec:called-count 'define-key) 2))
+                  (should (equal (mapcar '(lambda (x) (cdr x))
+                                         (el-spec:args-for-call 'define-key))
+                                 '(([134217843]
+                                    key-combo-execute-original)
+                                   ([key-combo _M-s]
+                                    key-combo-execute-original)
+                                   ([key-combo _M-s\ a]
+                                    test1))))
+                  (should (eq (lookup-key global-map [key-combo _M-s])
+                              'key-combo-execute-original))
+                  (should (eq (el-spec:called-count 'test1) 0))
+                  (execute-kbd-macro (kbd "M-s a"))
+                  (should (eq (el-spec:called-count 'test1) 1))
+                  ))
+              )
+            (it ()
+              (should-error
+               (with-mock
+                 (mock (test1 *) :times 1)
+                 (key-combo-define-global (kbd "M-C-d") '(test1 test2)))))
+            (it ()
+              ;; no error
+              (with-mock2
+                (defmock test1 () (interactive))
+                (defmock test2 () (interactive))
+                (key-combo-mode 1)
+                (key-combo-define-global (kbd "M-C-d") 'test1)
+                (execute-kbd-macro (kbd "M-C-d"))
+                ;; (should (eq (el-spec:called-count 'test1) 1))
+                ))
+            (it ()
+              ;; no error
+              (with-mock2
+                (defmock test1 () (interactive))
+                (defmock test2 () (interactive))
+                (key-combo-mode 1)
+                (key-combo-define-global (kbd "M-C-d") '(test1 test2))
+                (execute-kbd-macro (kbd "M-C-d"))
+                ;; (should (eq (el-spec:called-count 'test1) 1))
+                ))
+            (it ()
+              ;; no error
+              (with-mock2
+                (defmock test1 () (interactive))
+                (defmock test2 () (interactive))
+                (key-combo-mode 1)
+                (key-combo-define-global (kbd "M-C-d") '(test1 test2))
+                (execute-kbd-macro (kbd "M-C-d M-C-d"))
+                (should (eq (el-spec:called-count 'test1) 1))
+                (should (eq (el-spec:called-count 'test2) 1))
+                ))
+            (it ()
+              ;; no error
+              (with-mock2
+                (defmock define-key (keymap key def) 0)
+                (use-local-map (make-sparse-keymap))
+                (key-combo-define-local "a" "a")
+                (should (eq (el-spec:called-count 'define-key) 1))))
+            (it ()
+              ;; no error
+              (with-mock2
+                (defmock define-key (keymap key def) 0)
+                ;; (mock (define-key * * *) :times 1)
+                (use-local-map (make-sparse-keymap))
+                (key-combo-define-local "a" '("a"))
+                (should (eq (el-spec:called-count 'define-key) 1))))
+            (it ()
+              ;; no error
+              (with-mock2
+                (defmock define-key (keymap key def) 0)
+                (use-local-map (make-sparse-keymap))
+                ;; (mock (define-key * * *) :times 3);; 1 for recursive call?
+                (key-combo-define-local "a" '("a" "b"))
+                (should (eq (el-spec:called-count 'define-key) 2))))
+            (it ()
+              ;; no error
+              (with-mock2
+                (defmock define-key (keymap key def) 0)
+                (defmock lookup-key (keymap key) t)
+                (use-local-map (make-sparse-keymap))
+                ;; (mock (lookup-key * *) => t :times 2)
+                ;; (mock (define-key * * *) :times 2);; 1 for recursive call?
+                (key-combo-define-local "a" '("a" "b"))
+                (should (eq (el-spec:called-count 'define-key) 2))
+                (should (eq (el-spec:called-count 'lookup-key) 4))
+                )))
+          )
         (context "execute"
           (it ()
             (should (string= (key-combo-test-helper-execute ">") ">")))
@@ -203,48 +385,6 @@
           (it ()
             (insert ";")
             (should (string= (key-combo-test-helper-execute "=") ";=")))
-          )
-        (context "with mock"
-          (when (require 'el-mock nil t)
-            (it ()
-              (should-error
-               (with-mock
-                 (mock (test1 *) :times 1)
-                 (key-combo-define-global (kbd "M-C-d") '(test1 test2)))))
-            (it ()
-              ;; no error
-              (with-mock
-                (mock (test1 *) :times 1)
-                (key-combo-define-global (kbd "M-C-d") '(test1 test2))
-                (execute-kbd-macro (kbd "M-C-d"))))
-            (it ()
-              ;; no error
-              (with-mock
-                (mock (test1 *) :times 1)
-                (mock (test2 *) :times 1)
-                (key-combo-define-global (kbd "M-C-d") '(test1 test2))
-                (execute-kbd-macro (kbd "M-C-d M-C-d"))))
-            (it ()
-              ;; no error
-              (with-mock
-                (mock (define-key * * *) :times 1)
-                (key-combo-define-local "a" "a")))
-            (it ()
-              ;; no error
-              (with-mock
-                (mock (define-key * * *) :times 1)
-                (key-combo-define-local "a" '("a"))))
-            (it ()
-              ;; no error
-              (with-mock
-                (mock (define-key * * *) :times 3);; 1 for recursive call?
-                (key-combo-define-local "a" '("a" "b"))))
-            (it ()
-              ;; no error
-              (with-mock
-                (mock (lookup-key * *) => t :times 2)
-                (mock (define-key * * *) :times 2);; 1 for recursive call?
-                (key-combo-define-local "a" '("a" "b")))))
           )
         (context "in skk-mode"
           (when (require 'skk-autoloads nil t)
@@ -476,3 +616,41 @@
         )
       )
     ))
+
+;; (defun key-combo-prefix-command ()
+;;   (interactive)
+;;   (message "key-combo-pre")
+;;   )
+
+;; (global-set-key (kbd "M-s b") 'test3)
+;; (execute-kbd-macro (kbd "M-s b"))
+
+;; (defun key-combo-unread-command (cmd)
+;;   (interactive)
+;;     (setq unread-command-events
+;;           (append unread-command-events (listify-key-sequence cmd)))
+;;   )
+
+;; (progn
+;;   (key-combo-mode -1)
+;;   (key-combo-unread-command (kbd "M-s"))
+;;   (key-combo-unread-command (kbd "b"))
+;;   (key-combo-mode 1)
+;;   )
+
+;; (define-key key-combo-mode-map
+;;   (kbd "M-s") 'key-combo-prefix-command)
+
+;; (define-key key-combo-mode-map
+;;   (kbd "M-s") nil)
+
+;; (define-key global-map
+;;   (key-combo-make-key-vector (kbd "M-s")) 'test1)
+
+;; (define-key global-map
+;;   (key-combo-make-key-vector (kbd "M-s a")) 'test2)
+
+;; key-combo-mode-map
+
+;; (key-combo-define-global (kbd "M-s a") 'test1)
+

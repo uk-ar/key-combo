@@ -125,6 +125,8 @@
   (describe-bindings [key-combo]))
 
 (defun key-combo-make-key-vector (key)
+  "Return vector
+key is sequences"
   (vector 'key-combo
           ;; "_" is for error when key is " "
           (intern (concat "_" (key-description (vconcat key))))))
@@ -197,6 +199,9 @@ The binding is probably a symbol with a function definition."
       (when (string-match "\n" string)
         (indent-according-to-mode)
         (indent-region p (point)))))))
+;; (key-combo-execute-macro "hoge")
+;; (key-combo-key-binding ";")
+;; (funcall (key-combo-key-binding ";"))
 
 (defun key-combo-get-command (command)
   (unless (key-combo-elementp command)
@@ -205,8 +210,14 @@ The binding is probably a symbol with a function definition."
    ((functionp command) command)
    ((listp command) command)
    ((not (stringp command)) nil)
-   (t
-    command)
+   ;; string
+   ;; (t
+   ;;  command)
+   (t (lexical-let ((com command))
+        (lambda ()
+          (interactive)
+          (key-combo-execute-macro com)))
+      )
    );;end cond
   )
 
@@ -215,6 +226,31 @@ The binding is probably a symbol with a function definition."
       (stringp element)
       (null element));;for unset key
   )
+
+(defun key-combo-prefix-command ()
+  (interactive))
+
+;; (progn
+;;   (push ?a unread-command-events)
+;;   ;; (push ?b unread-command-events)
+;;   (setq unread-command-events
+;;         (append unread-command-events (list ?b)))
+;;   )
+
+;; (key-combo-define-global (kbd "M-s a") 'test1)
+
+(defvar key-combo-prefix-mode t)
+(defvar key-combo-prefix-mode-map (make-sparse-keymap))
+(defvar key-combo-prefix-mode-map-alist
+  `((key-combo-prefix-mode . ,key-combo-prefix-mode-map)))
+;; for setup
+(push 'key-combo-prefix-mode-map-alist
+      emulation-mode-map-alists)
+
+(defun key-combo-define-prefix (key command)
+  (define-key key-combo-prefix-mode-map key command)
+  (setq key-combo-prefix-mode-map-alist
+        `((key-combo-prefix-mode . ,key-combo-prefix-mode-map))))
 
 (defun key-combo-define (keymap key commands)
   "In KEYMAP, define key sequence KEY as COMMANDS.
@@ -228,10 +264,12 @@ If COMMANDS is nil, the key-chord is removed.
 If COMMANDS is list, treated as sequential commands.
 "
   ;;copy from key-chord-define
-  (let ((base-key (list (car (listify-key-sequence key)))))
+  (let ((base-key (list (car (listify-key-sequence key))));; list
+        (last-key (last (listify-key-sequence key))));; list
     (cond
      ;;for sequence '(" = " " == ")
      ((and (not (key-combo-elementp commands))
+           (car-safe commands)
            (key-combo-elementp (car-safe commands)))
       (let ((seq-keys base-key));;list
         (mapc #'(lambda(command)
@@ -248,10 +286,13 @@ If COMMANDS is list, treated as sequential commands.
         (when
             (and (eq (safe-length (listify-key-sequence key)) 2)
                  (null first))
-          (define-key keymap
-            (key-combo-make-key-vector base-key)
-            'key-combo-execute-original))
-        )
+          (key-combo-define keymap
+                            (vconcat base-key)
+                            'key-combo-execute-original)))
+      (when (keymapp (lookup-key keymap (vconcat last-key)))
+        ;; this is for prefix command
+        (key-combo-define-prefix (vconcat last-key)
+                                 'key-combo-prefix-command))
       (define-key keymap
         (key-combo-make-key-vector key)
         (key-combo-get-command commands))
@@ -294,7 +335,7 @@ which in most cases is shared with all other buffers in the same major mode.
     (",@" . " ,@");; for macro
     (";"  . ";; ")
     ;; (";"  . (";; " ";;; " "; ")) ;cannot use because of comment
-    (";=" . ";=> ")
+    ;; (";=" . ";=> ")
     ("="  . ("= " "eq " "equal "))
     (">=" . ">= ")
     ("C-M-x" . (key-combo-execute-original
@@ -332,6 +373,8 @@ which in most cases is shared with all other buffers in the same major mode.
     php-mode-hook
     ruby-mode-hook
     cperl-mode-hook
+    perl-mode-hook
+    python-mode-hook
     javascript-mode-hook
     js-mode-hook
     js2-mode-hook
@@ -422,8 +465,21 @@ which in most cases is shared with all other buffers in the same major mode.
   "Default binding for c-mode,c++-mode,objc-mode"
   :group 'key-combo)
 
+(defcustom key-combo-perl-default
+  '(("$" . (key-combo-execute-original))
+    ("@" . (key-combo-execute-original))
+    ("%" . (key-combo-execute-original))
+    ("&" . (key-combo-execute-original))
+    ("*" . (key-combo-execute-original))
+    ("->" . "->"))
+  "Default binding for c-mode,c++-mode,objc-mode"
+  :group 'key-combo)
+
 ;;;###autoload
 (defmacro key-combo-define-hook (hooks name keys)
+  ;; fix me:name to real name (not symbol)
+  ;; :hooks to quote
+  ;; don't use macro?
   `(progn
      (defun ,(nth 1 name) ()
        (key-combo-load-default-1 (current-local-map) ,keys)
@@ -446,6 +502,9 @@ which in most cases is shared with all other buffers in the same major mode.
   (key-combo-define-hook '(c-mode-hook c++-mode-hook)
                          'key-combo-pointer-load-default
                          key-combo-pointer-default)
+  (key-combo-define-hook '(cperl-mode-hook perl-mode-hook)
+                         'key-combo-pointer-load-default
+                         key-combo-perl-default)
   (key-combo-define-hook 'objc-mode-hook
                          'key-combo-objc-load-default
                          (append key-combo-pointer-default
@@ -511,7 +570,8 @@ which in most cases is shared with all other buffers in the same major mode.
   (undo-boundary)
   )
 
-(defvar key-combo-command-keys nil)
+(defvar key-combo-command-keys nil
+  "vector")
 (defvar key-combo-need-undop t)
 
 (defun key-combo ()
@@ -533,6 +593,12 @@ which in most cases is shared with all other buffers in the same major mode.
       (setq buffer-undo-list
             (append buffer-undo-list key-combo-original-undo-list)))
   (setq key-combo-original-undo-list nil)
+  (when (eq (key-binding (vector (elt key-combo-command-keys 0)))
+            'key-combo-prefix-command)
+    (setq key-combo-prefix-mode nil)
+    (setq unread-command-events
+          (listify-key-sequence key-combo-command-keys))
+    )
   (setq key-combo-command-keys nil)
   )
 
@@ -570,66 +636,79 @@ which in most cases is shared with all other buffers in the same major mode.
   ;; :init-value t bug?
   :group 'key-combo)
 
+(defun key-combo-check-keys (combo-keys this-keys)
+  "Returns combo key"
+  (let ((new-combo-key (vconcat combo-keys this-keys)))
+    (cond
+     ((and (key-combo-comment-or-stringp)
+           (memq (key-binding this-keys)
+                '(self-insert-command skk-insert)))
+      nil)
+     ((key-combo-key-binding new-combo-key)
+      new-combo-key)
+     ((and (not (key-combo-key-binding new-combo-key))
+               (key-combo-key-binding this-keys));;retry
+      (if (and (not (eq 1 (length combo-keys)))
+               ;; all same key
+               (equal [] (delete (aref new-combo-key 0)
+                                 new-combo-key)))
+          (setq key-combo-need-undop t)
+        (setq key-combo-need-undop nil))
+      this-keys)
+     (t nil)
+    )))
+
 (defun key-combo-pre-command-function ()
+  (setq key-combo-prefix-mode t)
   (let ((command-key-vector (this-command-keys-vector))
         (first-timep (not (eq last-command 'key-combo))))
     (setq key-combo-command-keys
-          ;; use last-command-event becase of testability
-          (vconcat key-combo-command-keys command-key-vector))
-    (unless (key-combo-key-binding key-combo-command-keys);;retry
-      ;; need undo?
-      (if (and (not (eq 2 (length key-combo-command-keys)))
-               (equal [] (delete (aref key-combo-command-keys 0)
-                                 key-combo-command-keys)))
-          (setq key-combo-need-undop t)
-        (setq key-combo-need-undop nil)
-        ;; (setq first-timep t)
-        )
-      (setq key-combo-command-keys command-key-vector))
-    (cond ((and
-            key-combo-mode
-            (not (minibufferp))
-            (not isearch-mode)
-            (key-combo-key-binding key-combo-command-keys)
-            (not (and (key-combo-comment-or-stringp)
-                      (memq (key-binding command-key-vector)
-                            '(self-insert-command skk-insert))))
-            )
-           (setq this-command 'key-combo)
-           (cond (first-timep
-                  ;; for test
-                  ;; (setq key-combo-command-keys nil)
-                  ;; (key-combo-finalize)
-                  ;; first time
-                  (setq key-combo-original-undo-list buffer-undo-list
-                        buffer-undo-list nil)
-                  (key-combo-set-start-position (cons (point) (window-start)))
-                  (cond ((memq (key-binding command-key-vector)
-                               '(self-insert-command skk-insert))
-                         (undo-boundary)
-                         (key-combo-command-execute
-                          (key-binding
-                           command-key-vector))
-                         (setq key-combo-need-undop t)
-                         ;; )
-                         ));;;
-                  )
-                 ;; continue
-                 ((eq key-combo-need-undop nil)
-                  ;; finalize
-                  (if (not (eq buffer-undo-list t))
-                      (setq key-combo-original-undo-list
-                            (append buffer-undo-list
-                                    key-combo-original-undo-list)))
-                  (setq buffer-undo-list nil)
-                  ;; (setq key-combo-command-keys nil)
-                  )
-                 ))
-          (t
-           (if (eq last-command 'key-combo)
-               (key-combo-finalize)
-             ))
-          )))
+          (key-combo-check-keys key-combo-command-keys command-key-vector))
+    (cond
+     ;;disabled modes
+     ((or (not key-combo-mode)
+          (minibufferp)
+          isearch-mode)
+      (when (eq last-command 'key-combo)
+        (key-combo-finalize)
+        ))
+     ;;for 1st time
+     ((and
+       (key-combo-key-binding key-combo-command-keys)
+       first-timep)
+      (setq this-command 'key-combo)
+      (setq key-combo-original-undo-list buffer-undo-list
+            buffer-undo-list nil)
+      (key-combo-set-start-position (cons (point) (window-start)))
+      ;;enables cancel for insertion
+      (cond ((memq (key-binding command-key-vector)
+                   '(self-insert-command skk-insert))
+             (undo-boundary)
+             (key-combo-command-execute
+              (key-binding
+               command-key-vector))
+             (setq key-combo-need-undop t)
+             )))
+     ;;for key combo no undo
+     ((and
+       (key-combo-key-binding key-combo-command-keys)
+       (eq key-combo-need-undop nil))
+      (setq this-command 'key-combo)
+      (if (not (eq buffer-undo-list t))
+          (setq key-combo-original-undo-list
+                (append buffer-undo-list
+                        key-combo-original-undo-list)))
+      (setq buffer-undo-list nil))
+     ;;for key combo with undo
+     ((and
+       (key-combo-key-binding key-combo-command-keys))
+      (setq this-command 'key-combo))
+     (t
+      ;;finish key combo
+      (when (eq last-command 'key-combo)
+        (key-combo-finalize)
+        ))
+     )))
 
 ;; (listify-key-sequence
 ;;  (kbd "M-C-d M-C-d"))
@@ -657,6 +736,7 @@ which in most cases is shared with all other buffers in the same major mode.
 ;; http://togetter.com/li/289305
 ;; http://www.bookshelf.jp/texi/elisp-manual/21-2-8/jp/elisp_40.html#SEC654
 ;; http://shyouhei.tumblr.com/post/63240207/pos-command-hook
+;; double-mode
 
 ;; support lamda func
 (provide 'key-combo)
