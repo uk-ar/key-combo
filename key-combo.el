@@ -151,7 +151,7 @@ The binding is probably a symbol with a function definition."
   (call-interactively (key-binding (this-command-keys-vector)))
   )
 
-(defalias 'key-combo-execute-orignal 'key-combo-execute-original)
+;; (defalias 'key-combo-execute-orignal 'key-combo-execute-original)
 
 ;; should be replace by union
 (defun key-combo-memq (a b)
@@ -213,6 +213,7 @@ The binding is probably a symbol with a function definition."
    ;; string
    ;; (t
    ;;  command)
+   ;; do not map string because it changes this-command-keys in post-command-hook
    (t (lexical-let ((com command))
         (lambda ()
           (interactive)

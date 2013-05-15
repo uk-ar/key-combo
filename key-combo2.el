@@ -1,70 +1,4 @@
 
-;; (defun hoge ()
-;;   (interactive)
-;;   ;;(undo-boundary)
-;;   ;; (call-interactively
-;;   ;;  (key-binding (key-combo-make-key-vector (this-command-keys-vector))))
-;;   (insert "hoge")
-;;   ;;(call-interactively ())
-;;   ;; key-combo-read for test
-;;   ;;(push (listify-key-sequence [key-combo-read]) unread-command-events)
-;;   (let ((event (read-event)))
-;;     (if (not (eq event ?a))
-;;         ;; not match key-combo
-;;         (progn
-;;           (setq unread-command-events
-;;                 (append (listify-key-sequence
-;;                          (this-command-keys-vector))
-;;                         unread-command-events))
-;;           (key-combo-command-end))
-;;       (progn
-;;         ;;(undo)
-;;         (primitive-undo 1 buffer-undo-list)
-;;         (setq unread-command-events
-;;               (append (key-combo-make-key-vector (kbd "M-a a"))
-;;                       unread-command-events))
-;;         ))))
-
-;; (defun key-combo-read ()
-;;   (interactive)
-;;   (message "r:aaa")
-;;   (let ((event (read-event "r:")))
-;;     (if (not (eq event ?a))
-;;         ;; not match key-combo
-;;         (progn
-;;           (setq unread-command-events
-;;                 (append (listify-key-sequence
-;;                          (this-command-keys-vector))
-;;                         unread-command-events))
-;;           (key-combo-command-end))
-;;       (progn
-;;         (undo)
-;;         ;(primitive-undo 1 buffer-undo-list)
-;;         (setq unread-command-events
-;;               (append (key-combo-make-key-vector (kbd "M-a a"))
-;;                       unread-command-events))
-;;         ))))
-
-;; (define-prefix-command 'test-map)
-;; (global-set-key (kbd "M-a") 'test-map)
-;; (define-key test-map (kbd "b")
-;;   (lambda ()
-;;     (interactive)
-;;     (insert "M-a b")))
-
-;; (define-key key-combo-prefix-mode-map (kbd "M-a") 'hoge)
-;; (define-key global-map
-;;   (key-combo-make-key-vector (kbd "M-a"))
-;;   (lambda ()
-;;     (interactive)
-;;     (insert "kc[M-a]")))
-;; (define-key global-map
-;;   (key-combo-make-key-vector (kbd "M-a a"))
-;;   (lambda ()
-;;     (interactive)
-;;     (insert "kc[M-a a]")))
-;; (define-key global-map [key-combo-read] 'key-combo-read)
-
 ;; (defun key-combo-on ()
 ;;   ;;(key-combo-prefix-mode 1)
 ;;   (setq key-combo-prefix-mode t)
@@ -83,73 +17,6 @@
 ;;   ;; reset this-command-keys
 ;;   (reset-this-command-lengths))
 
-;; (defun hyperify (prompt)
-;;   (let ((e (read-event)))
-;;     ;;(vector
-;;     (if (eq e ?a)
-;;        (key-combo-make-key-vector (kbd "M-a a"))
-;;        (vector e)
-;;        ;; (append (key-combo-make-key-vector (kbd "M-a a"))
-;;          ;;         unread-command-events)
-;;        ;; (logior (lsh 1 24) e)
-;;        ;; (if (memq 'hyper (event-modifiers e))
-;;        ;;     e
-;;        ;;   (append (key-combo-make-key-vector (kbd "M-a a"))
-;;        ;;           unread-command-events)
-;;          ;; (add-event-modifier "H-" e)
-;;        ))););;)
-
-;; (defun add-event-modifier (string e)
-;;   (let ((symbol (if (symbolp e) e (car e))))
-;;     (setq symbol (intern (concat string
-;;                                  (symbol-name symbol))))
-;;     (if (symbolp e)
-;;         symbol
-;;       (cons symbol (cdr e)))))
-
-;; (define-key function-key-map (kbd "M-a") 'hyperify)
-;; (define-key key-translation-map (kbd "M-a") 'hyperify)
-
-;; (hoge)
-;; assert pre-command-hook
-;; assert last-command
-;; assert clean-up
-;; (defun hoge-1 ()
-;;   (interactive)
-;;   (insert "hoge"))
-
-;; (defun hoge2 ()
-;;   (interactive)
-;;   ;; (insert "hoge")
-;;   ;; (undo-boundary)
-;;   (call-interactively 'hoge-1)
-;;   (let ((event (read-event)))
-;;     ;; (keyboard-quit)
-;;     (if (not (eq event ?a))
-;;         (setq unread-command-events
-;;               (listify-key-sequence (list event)))
-;;       (primitive-undo 1 buffer-undo-list)
-;;       (setq unread-command-events
-;;             (append (key-combo-make-key-vector (kbd "M-a a"))
-;;                     unread-command-events))
-;;       ;; (setq unread-command-events
-;;       ;;       (listify-key-sequence (vector 'key-combo event)))
-;;       )))
-
-;; (global-set-key (kbd "M-a") 'hoge2)
-;; (define-key global-map
-;;   (key-combo-make-key-vector (kbd "M-a a"))
-;;   (lambda ()
-;;     (interactive)
-;;     (insert "kc[M-a a]")))
-
-;; (with-temp-buffer
-;;   (switch-to-buffer (current-buffer))
-;;   (buffer-enable-undo)
-;;   (execute-kbd-macro (kbd "M-a a"))
-;;   (buffer-substring-no-properties (point-min) (point-max))
-;;   )
-
 (defun key-combo-test-helper-execute (cmd)
   ;; (key-combo-mode 1)
   (execute-kbd-macro (key-combo-read-kbd-macro cmd))
@@ -167,9 +34,6 @@
     (interactive)
     (insert "kc[M-a]")
     ))
-
-;; (define-key global-map
-;;   (key-combo-make-key-vector (kbd ";")) ";; ]")
 
 (local-set-key
   (key-combo-make-key-vector (kbd ";"))
@@ -191,7 +55,9 @@
 ;; (defvar my-key-combo-count 0)
 (defun my-key-combo-keys-vector ()
   ;; (read-kbd-macro (substring (symbol-name (intern "_M-a a")) 1)))
-  (read-kbd-macro (substring (symbol-name last-command-event) 1)))
+  (vconcat (read-kbd-macro (substring (symbol-name
+                              (if (symbolp last-command-event)last-command-event)
+                              ) 1))))
 
 (defun my-unread-events (vector)
   ;;cannot use push because need to concat vector and list
@@ -207,24 +73,19 @@
     ;; Let the debugger run
     ((debug error) (signal (car err) (cdr err)))))
 
-;; (defun key-combo-execute-original ()
-;;   (interactive)
-;;   (call-interactively (key-binding (my-key-combo-keys-vector)))
+(defun key-combo-execute-original ()
+  (interactive)
+  ;; for self-insert-command
+  (setq last-command-event (aref (my-key-combo-keys-vector)0))
+  (call-interactively (key-binding (vector last-command-event)))
+  )
+
+(setq debug-on-error t)
+;; (progn
+;;   (setq last-command-event ? )
+;;   ;; (self-insert-command 1)
+;;   (call-interactively 'self-insert-command)
 ;;   )
-
-;; (defun key-combo-on ()
-;;   ;;(key-combo-prefix-mode 1)
-;;   (add-hook 'post-command-hook #'my-post-command t)
-;;   (remove-hook 'pre-command-hook #'key-combo-on t))
-;; (put 'key-combo-on 'permanent-local-hook t)
-
-;; (defun my-print ()
-;;   (interactive)
-;;   (message "0 thi:%s li:%s ln:%s lc:%s"
-;;            (key-description (this-command-keys-vector))
-;;            (key-description (vector last-input-event))
-;;            (key-description (vector last-nonmenu-event))
-;;            (key-description (vector last-command-event))))
 
 (defun my-post-command ()
   ;;(message "this:%S" (this-command-keys-vector))
@@ -242,7 +103,7 @@
                                (aref (this-command-keys-vector) 0))))
          (keys-vector (if in-key-combo (my-key-combo-keys-vector) nil));
          (events (vector (read-event))))
-    ;; (message "1.5 thi:%s rev:%S ev:%s li:%S lc:%S ln:%S vc:%s in:%s"
+    ;; (message "1.5 thi:%s rev:%S ev:%s li:%S lc:%S ln:%S vck:%s in:%s vc:%s"
     ;;          (key-description (this-command-keys-vector))
     ;;          events
     ;;          (if (equal events [-1]) "-1" (key-description events))
@@ -251,64 +112,41 @@
     ;;          last-nonmenu-event
     ;;          (if (equal events [-1]) "-1"
     ;;            (key-description (vconcat keys-vector events)))
-    ;;          in-key-combo)
+    ;;          in-key-combo
+    ;;          (vconcat keys-vector events))
     (cond
-     ;; cycling
-     ;; ()
      ;; already start
-     ((and in-key-combo (equal (vconcat keys-vector events) (kbd "M-a a")))
-      ;;continue
+     ((and in-key-combo (key-combo-key-binding (vconcat keys-vector events)))
+      ;; keep
       (primitive-undo 1 buffer-undo-list)
-      (my-unread-events (key-combo-make-key-vector (kbd "M-a a")))
+      (my-unread-events (key-combo-make-key-vector (vconcat keys-vector events)))
       )
-     ((and in-key-combo (equal (vconcat keys-vector events) (kbd "M-a b")))
+     ;; loop
+     ((and in-key-combo
+           (not (key-combo-key-binding (vconcat keys-vector events)))
+           ;; for 1 key eg.<key-combo> SPC SPC
+           (not (eq (length (vconcat keys-vector events)) 3))
+           (key-combo-key-binding events))
+      ;; finish
+      (primitive-undo 1 buffer-undo-list)
+      (my-unread-events (key-combo-make-key-vector events))
+      )
+     ((key-combo-key-binding events)
+      ;; start
+      (my-unread-events (key-combo-make-key-vector events))
+      )
+     ((and in-key-combo
+           (not (key-combo-key-binding (vconcat keys-vector events)))
+           (key-binding (vconcat keys-vector events)))
       ;; finish
       ;; fall back prefix
-      ;; (add-hook 'pre-command-hook #'key-combo-on nil t)
-      ;; (remove-hook 'post-command-hook #'my-post-command)
+      ;; Todo: multiple prefix
       (primitive-undo 1 buffer-undo-list)
-      (my-unread-events (kbd "M-a b"))
-      ;;(reset-this-command-lengths)
-      )
-     ((and in-key-combo (equal (vconcat keys-vector events)
-                               (vconcat (kbd "= ="))))
-      ;;finish
-      (primitive-undo 1 buffer-undo-list)
-      (my-unread-events (key-combo-make-key-vector (kbd "= =")))
-     )
-     ((and in-key-combo (equal (vconcat keys-vector events)
-                               (vconcat (kbd "= = ="))))
-      ;;finish
-      (primitive-undo 1 buffer-undo-list)
-      (my-unread-events (key-combo-make-key-vector (kbd "= = =")))
-      )
-     ((and in-key-combo (equal (vconcat keys-vector events)
-                               (vconcat (kbd "= = = ="))))
-      ;;finish
-      (primitive-undo 1 buffer-undo-list)
-      (my-unread-events (key-combo-make-key-vector (kbd "=")))
-      )
-     (in-key-combo
-      ;;finish
-      ;; (add-hook 'pre-command-hook #'key-combo-on nil t)
-      ;; (remove-hook 'post-command-hook #'my-post-command)
-      (my-unread-events events)
-      )
-     ;; start
-     ((equal events (kbd "M-a"))
-      (my-unread-events (key-combo-make-key-vector (kbd "M-a")))
-      ;;(reset-this-command-lengths)
-      )
-     ((equal events [?\;])
-      (my-unread-events (key-combo-make-key-vector (kbd ";")))
-      )
-     ((equal events [?=])
-      (my-unread-events (key-combo-make-key-vector (kbd "=")))
+      (my-unread-events (vconcat keys-vector events))
       )
      (t
       ;; no key combo
       (my-unread-events events)
-      ;;(reset-this-command-lengths)
       )
      )
     ;; (message "2 thi:%s rev:%S ev:%s li:%S lc:%S"
@@ -323,23 +161,17 @@
     )
   )
 
-;; (local-set-key
-;;  (key-combo-make-key-vector (kbd ";"))
-;;  ;;"ho"
-;;  'my-print
-;;  )
-
 (progn
   (message "start")
   ;;(execute-kbd-macro (kbd "M-a b"))
   ;;(execute-kbd-macro (key-combo-make-key-vector (kbd "M-a")))
   ;;(key-combo-test-helper-execute ";")
-  (execute-kbd-macro (key-combo-make-key-vector (kbd ";")))
+  ;;(execute-kbd-macro (key-combo-make-key-vector (kbd ";")))
   ;;(my-unread-events (key-combo-make-key-vector (kbd ";")))
   ;;(execute-kbd-macro (kbd ";"))
   ;;(reset-this-command-lengths)
   (message "end")
-  );; 
+  )
 ;;(key-binding (key-combo-make-key-vector (kbd ";")))
 
 ;; (progn
@@ -387,9 +219,13 @@
       (it ()
         (should (string= (key-combo-test-helper-execute "=") "= ")))
       (it ()
+        (should (string= (key-combo-test-helper-execute "SPC") " ")))
+      (it ()
         (should (string= (key-combo-test-helper-execute "= =") "eq ")))
       (it ()
         (should (string= (key-combo-test-helper-execute "= = =") "equal ")))
+      (it ()
+        (should (string= (key-combo-test-helper-execute "= = = =") "= ")))
       (it ()
         (should (string= (key-combo-test-helper-execute "M-a a") "kc[M-a a]")))
       (it ()
@@ -401,8 +237,8 @@
       ;; "kc[M-a]b"
       (it ()
         (should (string= (key-combo-test-helper-execute "M-a b") "n[M-a b]")))
-      ;; (it ()
-      ;;   (should (string= (key-combo-test-helper-execute ";") ";; ")))
+      (it ()
+        (should (string= (key-combo-test-helper-execute ";") ";; ")))
       (it ()
         (should (eq (car (key-binding (key-combo-make-key-vector (kbd ";"))))
                     'lambda)))
