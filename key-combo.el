@@ -217,13 +217,18 @@ The binding is probably a symbol with a function definition."
    (t (lexical-let ((com command))
         (lambda ()
           (interactive)
+          (when (and (not (null buffer-undo-list))
+                     (not (eq buffer-undo-list t))
+                     (eq (car buffer-undo-list) nil))
+            (setq buffer-undo-list (cdr buffer-undo-list)))
           (key-combo-execute-macro com)))
       )
    );;end cond
   )
 
 (defun key-combo-elementp (element)
-  (or (functionp element)
+  (or ;;(functionp element)
+   (commandp element)
       (stringp element)
       (null element));;for unset key
   )
@@ -341,6 +346,7 @@ which in most cases is shared with all other buffers in the same major mode.
     (">=" . ">= ")
     ("C-M-x" . (key-combo-execute-original
                 (lambda ()
+                  (interactive)
                   (let ((current-prefix-arg '(4)))
                     (call-interactively 'eval-defun)))));; lamda for message
     ("-"  . (key-combo-execute-original));; for symbol name
@@ -543,6 +549,7 @@ which in most cases is shared with all other buffers in the same major mode.
     (setq key-combo-start-position pos))
   (defun key-combo-return ()
     "Return to the position when sequence of calls of the same command was started."
+    (interactive)
     (unless (eq key-combo-start-position nil)
       (progn
         (goto-char (car key-combo-start-position))
@@ -610,11 +617,14 @@ which in most cases is shared with all other buffers in the same major mode.
   :group 'key-combo
   :keymap (make-sparse-keymap)
   (if key-combo-mode
-      (add-hook 'pre-command-hook
-                ;;post-self-insert-hook
-                #'key-combo-pre-command-function nil t)
-    (remove-hook 'pre-command-hook
-                 #'key-combo-pre-command-function t))
+      (add-hook 'post-command-hook #'my-key-combo-post-command-function t t)
+    (remove-hook 'post-command-hook #'my-key-combo-post-command-function t)
+      ;; (add-hook 'pre-command-hook
+      ;;           ;;post-self-insert-hook
+      ;;           #'key-combo-pre-command-function nil t)
+      ;; (remove-hook 'pre-command-hook
+      ;;            #'key-combo-pre-command-function t)
+    )
   )
 
 (defcustom key-combo-disable-modes nil
@@ -710,6 +720,8 @@ which in most cases is shared with all other buffers in the same major mode.
         (key-combo-finalize)
         ))
      )))
+
+(load "key-combo2.el")
 
 ;; (listify-key-sequence
 ;;  (kbd "M-C-d M-C-d"))

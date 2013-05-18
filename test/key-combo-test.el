@@ -1,6 +1,6 @@
 (require 'ert)
 (require 'el-spec)
-(require 'test-double)
+(require 'el-spy)
 
 (require 'key-combo)
 (key-combo-load-default)
@@ -132,15 +132,15 @@
             (context "prefix"
               (it ()
                 ;; no error
-                (with-mock2
+                (with-el-spy
                   (defmock test3 () (interactive))
                   (global-set-key (kbd "M-s z") 'test3)
                   (execute-kbd-macro (kbd "M-s z"))
-                  (should (eq (el-spec:called-count 'test3) 1))
+                  (should (eq (el-spy:called-count 'test3) 1))
                   ))
               (it ()
                 ;; no error
-                (with-mock2
+                (with-el-spy
                   (should (keymapp (key-binding (kbd "M-s"))));; prefix
                   (defmock test1 () (interactive))
                   (defmock test2 () (interactive))
@@ -148,67 +148,67 @@
                   (key-combo-define-global (kbd "M-s") 'test1)
                   (key-combo-define-global (kbd "M-s a") 'test2)
                   (execute-kbd-macro (kbd "M-s a"))
-                  (should (eq (el-spec:called-count 'test1) 1))
-                  (should (eq (el-spec:called-count 'test2) 1))
+                  (should (eq (el-spy:called-count 'test1) 1))
+                  (should (eq (el-spy:called-count 'test2) 1))
                   ))
               (it ()
                 ;; no error
-                (with-mock2
+                (with-el-spy
                   (should (keymapp (key-binding (kbd "M-s"))));; prefix
                   (defmock test1 () (interactive))
                   (defmock test2 () (interactive))
                   (key-combo-define-global (kbd "a") 'test1)
                   (key-combo-define-global (kbd "a M-s") 'test2)
                   (execute-kbd-macro (kbd "a M-s"))
-                  (should (eq (el-spec:called-count 'test1) 1))
-                  (should (eq (el-spec:called-count 'test2) 1))
+                  (should (eq (el-spy:called-count 'test1) 1))
+                  (should (eq (el-spy:called-count 'test2) 1))
                   ))
               (it ()
                 ;; no error
-                (with-mock2
+                (with-el-spy
                   (should-not (keymapp (key-binding (kbd "M-a"))));; prefix
                   (defmock test1 () (interactive))
                   (defmock test2 () (interactive))
                   (key-combo-define-global (kbd "M-a") 'test1)
                   (key-combo-define-global (kbd "M-a a") 'test2)
                   (execute-kbd-macro (kbd "M-a a"))
-                  (should (eq (el-spec:called-count 'test1) 1))
-                  (should (eq (el-spec:called-count 'test2) 1))
+                  (should (eq (el-spy:called-count 'test1) 1))
+                  (should (eq (el-spy:called-count 'test2) 1))
                   ))
               (it ()
                 ;; no error
-                (with-mock2
+                (with-el-spy
                   (defmock test1 () (interactive))
                   (defmock test2 () (interactive))
                   (key-combo-define-global (kbd "M-a") 'test1)
                   (key-combo-define-global (kbd "M-a M-a") 'test2)
                   (execute-kbd-macro (kbd "M-a M-a"))
-                  (should (eq (el-spec:called-count 'test1) 1))
-                  (should (eq (el-spec:called-count 'test2) 1))
+                  (should (eq (el-spy:called-count 'test1) 1))
+                  (should (eq (el-spy:called-count 'test2) 1))
                   ))
               (it ()
-                (with-mock2
+                (with-el-spy
                   (defmock define-key (keymap key def))
                   (key-combo-define-global (kbd "aa") 'test1)
-                  (should (eq (el-spec:called-count 'define-key) 2))
+                  (should (eq (el-spy:called-count 'define-key) 2))
                   (should (equal (mapcar '(lambda (x) (cdr x))
-                                         (el-spec:args-for-call 'define-key))
+                                         (el-spy:args-for-call 'define-key))
                                  '(([key-combo _a]
                                     key-combo-execute-original)
                                    ([key-combo _a\ a]
                                     test1))))
                   ))
               (it ()
-                (with-mock2
+                (with-el-spy
                   (should (keymapp (key-binding (kbd "M-s"))));; prefix
                   (defmock define-key (keymap key def)
-                           (funcall (el-spec:get-original-func 'define-key)
+                           (funcall (el-spy:get-original-func 'define-key)
                                     keymap key def))
                   (defmock test1 () (interactive))
                   (key-combo-define-global (kbd "M-s a") 'test1)
-                  ;; (should (eq (el-spec:called-count 'define-key) 2))
+                  ;; (should (eq (el-spy:called-count 'define-key) 2))
                   (should (equal (mapcar '(lambda (x) (cdr x))
-                                         (el-spec:args-for-call 'define-key))
+                                         (el-spy:args-for-call 'define-key))
                                  '(([134217843]
                                     key-combo-execute-original)
                                    ([key-combo _M-s]
@@ -217,9 +217,9 @@
                                     test1))))
                   (should (eq (lookup-key global-map [key-combo _M-s])
                               'key-combo-execute-original))
-                  (should (eq (el-spec:called-count 'test1) 0))
+                  (should (eq (el-spy:called-count 'test1) 0))
                   (execute-kbd-macro (kbd "M-s a"))
-                  (should (eq (el-spec:called-count 'test1) 1))
+                  (should (eq (el-spy:called-count 'test1) 1))
                   ))
               )
             (it ()
@@ -229,69 +229,69 @@
                  (key-combo-define-global (kbd "M-C-d") '(test1 test2)))))
             (it ()
               ;; no error
-              (with-mock2
+              (with-el-spy
                 (defmock test1 () (interactive))
                 (defmock test2 () (interactive))
                 (key-combo-mode 1)
                 (key-combo-define-global (kbd "M-C-d") 'test1)
                 (execute-kbd-macro (kbd "M-C-d"))
-                ;; (should (eq (el-spec:called-count 'test1) 1))
+                ;; (should (eq (el-spy:called-count 'test1) 1))
                 ))
             (it ()
               ;; no error
-              (with-mock2
+              (with-el-spy
                 (defmock test1 () (interactive))
                 (defmock test2 () (interactive))
                 (key-combo-mode 1)
                 (key-combo-define-global (kbd "M-C-d") '(test1 test2))
                 (execute-kbd-macro (kbd "M-C-d"))
-                ;; (should (eq (el-spec:called-count 'test1) 1))
+                ;; (should (eq (el-spy:called-count 'test1) 1))
                 ))
             (it ()
               ;; no error
-              (with-mock2
+              (with-el-spy
                 (defmock test1 () (interactive))
                 (defmock test2 () (interactive))
                 (key-combo-mode 1)
                 (key-combo-define-global (kbd "M-C-d") '(test1 test2))
                 (execute-kbd-macro (kbd "M-C-d M-C-d"))
-                (should (eq (el-spec:called-count 'test1) 1))
-                (should (eq (el-spec:called-count 'test2) 1))
+                (should (eq (el-spy:called-count 'test1) 1))
+                (should (eq (el-spy:called-count 'test2) 1))
                 ))
             (it ()
               ;; no error
-              (with-mock2
+              (with-el-spy
                 (defmock define-key (keymap key def) 0)
                 (use-local-map (make-sparse-keymap))
                 (key-combo-define-local "a" "a")
-                (should (eq (el-spec:called-count 'define-key) 1))))
+                (should (eq (el-spy:called-count 'define-key) 1))))
             (it ()
               ;; no error
-              (with-mock2
+              (with-el-spy
                 (defmock define-key (keymap key def) 0)
                 ;; (mock (define-key * * *) :times 1)
                 (use-local-map (make-sparse-keymap))
                 (key-combo-define-local "a" '("a"))
-                (should (eq (el-spec:called-count 'define-key) 1))))
+                (should (eq (el-spy:called-count 'define-key) 1))))
             (it ()
               ;; no error
-              (with-mock2
+              (with-el-spy
                 (defmock define-key (keymap key def) 0)
                 (use-local-map (make-sparse-keymap))
                 ;; (mock (define-key * * *) :times 3);; 1 for recursive call?
                 (key-combo-define-local "a" '("a" "b"))
-                (should (eq (el-spec:called-count 'define-key) 2))))
+                (should (eq (el-spy:called-count 'define-key) 2))))
             (it ()
               ;; no error
-              (with-mock2
+              (with-el-spy
                 (defmock define-key (keymap key def) 0)
                 (defmock lookup-key (keymap key) t)
                 (use-local-map (make-sparse-keymap))
                 ;; (mock (lookup-key * *) => t :times 2)
                 ;; (mock (define-key * * *) :times 2);; 1 for recursive call?
                 (key-combo-define-local "a" '("a" "b"))
-                (should (eq (el-spec:called-count 'define-key) 2))
-                (should (eq (el-spec:called-count 'lookup-key) 4))
+                (should (eq (el-spy:called-count 'define-key) 2))
+                (should (eq (el-spy:called-count 'lookup-key) 4))
                 )))
           )
         (context "execute"
