@@ -233,8 +233,8 @@ The binding is probably a symbol with a function definition."
       (null element));;for unset key
   )
 
-(defun key-combo-prefix-command ()
-  (interactive))
+;; (defun key-combo-prefix-command ()
+;;   (interactive))
 
 ;; (progn
 ;;   (push ?a unread-command-events)
@@ -245,18 +245,18 @@ The binding is probably a symbol with a function definition."
 
 ;; (key-combo-define-global (kbd "M-s a") 'test1)
 
-(defvar key-combo-prefix-mode t)
-(defvar key-combo-prefix-mode-map (make-sparse-keymap))
-(defvar key-combo-prefix-mode-map-alist
-  `((key-combo-prefix-mode . ,key-combo-prefix-mode-map)))
-;; for setup
-(push 'key-combo-prefix-mode-map-alist
-      emulation-mode-map-alists)
+;; (defvar key-combo-prefix-mode t)
+;; (defvar key-combo-prefix-mode-map (make-sparse-keymap))
+;; (defvar key-combo-prefix-mode-map-alist
+;;   `((key-combo-prefix-mode . ,key-combo-prefix-mode-map)))
+;; ;; for setup
+;; (push 'key-combo-prefix-mode-map-alist
+;;       emulation-mode-map-alists)
 
-(defun key-combo-define-prefix (key command)
-  (define-key key-combo-prefix-mode-map key command)
-  (setq key-combo-prefix-mode-map-alist
-        `((key-combo-prefix-mode . ,key-combo-prefix-mode-map))))
+;; (defun key-combo-define-prefix (key command)
+;;   (define-key key-combo-prefix-mode-map key command)
+;;   (setq key-combo-prefix-mode-map-alist
+;;         `((key-combo-prefix-mode . ,key-combo-prefix-mode-map))))
 
 (defun key-combo-define (keymap key commands)
   "In KEYMAP, define key sequence KEY as COMMANDS.
@@ -297,8 +297,9 @@ If COMMANDS is list, treated as sequential commands.
                             'key-combo-execute-original)))
       (when (keymapp (lookup-key keymap (vconcat last-key)))
         ;; this is for prefix command
-        (key-combo-define-prefix (vconcat last-key)
-                                 'key-combo-prefix-command))
+        ;; (key-combo-define-prefix (vconcat last-key)
+        ;;                          'key-combo-prefix-command)
+        )
       (define-key keymap
         (key-combo-make-key-vector key)
         (key-combo-get-command commands))
