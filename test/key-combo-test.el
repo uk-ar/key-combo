@@ -5,21 +5,6 @@
 (require 'key-combo)
 (key-combo-load-default)
 
-(defun test1 ()
-  (interactive)
-  (message "test1")
-  )
-
-(defun test2 ()
-  (interactive)
-  (message "test2")
-  )
-
-(defun test3 ()
-  (interactive)
-  (message "test3")
-  )
-
 (defun key-combo-test-helper-execute (cmd)
   (key-combo-mode 1)
   (execute-kbd-macro (key-combo-read-kbd-macro cmd))
@@ -29,20 +14,18 @@
   (key-combo-define-global ">>" cmd)
   (key-combo-key-binding ">>"))
 
-(defun key-combo-test-helper-binding-execute (cmd)
-  (key-combo-command-execute (key-combo-key-binding cmd))
-  (substring-no-properties (buffer-string)))
-
 (dont-compile
   (when (fboundp 'describe)
-    (describe ("key-combo in temp-buffer" :vars ((mode)))
-      (shared-examples "check pre-command-hook"
+    (describe ("key-combo in temp-buffer")
+      (shared-examples "check post-command-hook"
         (it ()
           (key-combo-mode 1)
-          (should (memq 'key-combo-pre-command-function pre-command-hook)))
+          (should (memq 'key-combo-post-command-function
+                        post-command-hook)))
         (it ()
           (key-combo-mode -1)
-          (should-not (memq 'key-combo-pre-command-function pre-command-hook))))
+          (should-not (memq 'key-combo-post-command-function
+                            post-command-hook))))
       (shared-examples "C-a"
         (before
           (insert "B\n IP")
@@ -54,17 +37,21 @@
         ;;   (should-not (key-combo-key-binding (kbd "C-a C-a"))))
         (it ()
           (key-combo-test-helper-execute "C-a")
-          (should (equal (char-to-string (following-char)) "I")))
+          (should (equal (char-to-string (following-char)) "I"))
+          (should (eq real-last-command 'back-to-indentation))
+          )
         (it ()
           (key-combo-test-helper-execute "C-a C-a")
-          (should (equal (char-to-string (following-char)) " ")))
+          (should (equal (char-to-string (following-char)) " "))
+          (should (eq real-last-command 'move-beginning-of-line))
+          )
         (it ()
           (key-combo-test-helper-execute "C-a C-a C-a")
-          (should (equal (char-to-string (following-char)) "B")))
+          (should (equal (char-to-string (following-char)) "B"))
+          (should (eq real-last-command 'beginning-of-buffer))
+          )
         (it ()
-          (should (memq 'key-combo-pre-command-function pre-command-hook))
-          (key-combo-test-helper-execute "C-a C-p")
-          (should (memq 'key-combo-pre-command-function pre-command-hook)))
+          (key-combo-test-helper-execute "C-a C-p"))
         ;; fail in temp buffer?
         ;; (it (:vars ((cmd "C-a C-a C-a C-a")))
         ;;   (backward-char)
@@ -72,49 +59,42 @@
         )
 
       (around
-        (setq key-combo-command-keys nil)
         (with-temp-buffer
           (switch-to-buffer (current-buffer))
-          (let ((key-combo-prefix-mode-map (make-sparse-keymap))
-                (key-combo-prefix-mode-map-alist nil)
-                ;; (key-combo-mode-map
-                ;;  (copy-keymap key-combo-mode-map))
-                (global-map-org (current-global-map))
+          (let ((global-map-org (current-global-map))
                 (global-map
                  (let ((map (make-sparse-keymap)))
                    (set-keymap-parent map (current-global-map))
                    map)))
             (unwind-protect
-                (progn
+                (with-el-spy
                   (use-global-map global-map)
                   (funcall el-spec:example))
               (use-global-map global-map-org)))))
 
-      (it ()
-        (should (eq key-combo-mode nil)))
       (it "is key-combo element"
         (should (key-combo-elementp ">"))
-        (should (key-combo-elementp '(lambda()())))
+        (should (key-combo-elementp '(lambda() (interactive) ())))
         (should (key-combo-elementp 'nil))
         (should (key-combo-elementp 'self-insert-command)))
       (it "is not key-combo element"
         (should-not (key-combo-elementp '(">")))
-        (should-not (key-combo-elementp '((lambda()()))))
+        (should-not (key-combo-elementp '((lambda() (interactive) ()))))
         (should-not (key-combo-elementp '(nil)))
         (should-not (key-combo-elementp '(self-insert-command)))
         (should-not (key-combo-elementp 'wrong-command)))
       (it "can define & lookup"
-        (should (key-combo-test-helper-define-lookup '(lambda()())))
+        (should (key-combo-test-helper-define-lookup '(lambda()(interactive)())))
         (should (key-combo-test-helper-define-lookup ">"))
         (should (key-combo-test-helper-define-lookup 'self-insert-command))
-        (should (key-combo-test-helper-define-lookup '((lambda()()))))
+        (should (key-combo-test-helper-define-lookup '((lambda()(interactive)()))))
         (should (key-combo-test-helper-define-lookup '(">")))
         (should (key-combo-test-helper-define-lookup '(self-insert-command)))
         (should (key-combo-test-helper-define-lookup '(">" ">")))
-        (should (key-combo-test-helper-define-lookup '(">" (lambda()()))))
-        (should (key-combo-test-helper-define-lookup '((lambda()()) ">")))
+        (should (key-combo-test-helper-define-lookup '(">" (lambda()(interactive)()))))
+        (should (key-combo-test-helper-define-lookup '((lambda()(interactive)()) ">")))
         (should
-         (key-combo-test-helper-define-lookup '((lambda()()) (lambda()()))))
+         (key-combo-test-helper-define-lookup '((lambda()(interactive)()) (lambda()(interactive)()))))
         (should
          (key-combo-test-helper-define-lookup '(">" self-insert-command)))
         (should
@@ -123,176 +103,228 @@
          (key-combo-test-helper-define-lookup
           '(self-insert-command self-insert-command)))
         )
-      (include-examples "check pre-command-hook")
+      ;;(include-examples "invalid examples name")
+      (include-examples "check post-command-hook")
       (include-examples "C-a")
+      (it "undo"
+        ;; with-current-buffer (get-buffer-create "hoge")
+        (erase-buffer)
+        (buffer-disable-undo)
+        (buffer-enable-undo)
+        (insert "init:")
+        (undo-boundary)
+        (setq buffer-undo-list nil)
+
+        (insert "1")
+        (undo-boundary)
+        (should (string= (buffer-string) "init:1"))
+
+        (should (= (key-combo-count-boundary buffer-undo-list) 1))
+        (primitive-undo 2 buffer-undo-list)
+        (undo-boundary)
+        (should (string= (buffer-string) "init:"))
+        (setq buffer-undo-list (cdr buffer-undo-list))
+        (insert "2")
+        (undo-boundary)
+        (should (string= (buffer-string) "init:2"))
+
+        (should (= (key-combo-count-boundary buffer-undo-list) 2))
+        (primitive-undo 3 buffer-undo-list)
+        (undo-boundary)
+
+        (should (string= (buffer-string) "init:"))
+        (setq buffer-undo-list (cdr buffer-undo-list))
+        (insert "3")
+        (undo-boundary)
+        (should (string= (buffer-string) "init:3"))
+        (should (= (point) 7))
+
+        (should (= (key-combo-count-boundary buffer-undo-list) 3))
+        (primitive-undo 4 buffer-undo-list)
+        (should (string= (buffer-string) "init:"))
+        (insert "4")
+        (undo-boundary)
+        (should (string= (buffer-string) "init:4"))
+        (should (= (point) 7))
+
+        (undo)
+        (should (string= (buffer-string) "init:3"))
+        (should (= (point) 7))
+
+        (undo-more 1)
+        (should (string= (buffer-string) "init:2"))
+        (should (= (point) 7))
+
+        (undo-more 1)
+        (should (string= (buffer-string) "init:1"))
+        (should (= (point) 7))
+        )
 
       (context "in default-mode"
         (context "with mock"
-          (when (require 'el-mock nil t)
-            (context "prefix"
-              (it ()
-                ;; no error
-                (with-el-spy
-                  (defmock test3 () (interactive))
-                  (global-set-key (kbd "M-s z") 'test3)
-                  (execute-kbd-macro (kbd "M-s z"))
-                  (should (eq (el-spy:called-count 'test3) 1))
-                  ))
-              (it ()
-                ;; no error
-                (with-el-spy
-                  (should (keymapp (key-binding (kbd "M-s"))));; prefix
-                  (defmock test1 () (interactive))
-                  (defmock test2 () (interactive))
-                  ;; (global-set-key (kbd "M-s") 'hoge);workaround
-                  (key-combo-define-global (kbd "M-s") 'test1)
-                  (key-combo-define-global (kbd "M-s a") 'test2)
-                  (execute-kbd-macro (kbd "M-s a"))
-                  (should (eq (el-spy:called-count 'test1) 1))
-                  (should (eq (el-spy:called-count 'test2) 1))
-                  ))
-              (it ()
-                ;; no error
-                (with-el-spy
-                  (should (keymapp (key-binding (kbd "M-s"))));; prefix
-                  (defmock test1 () (interactive))
-                  (defmock test2 () (interactive))
-                  (key-combo-define-global (kbd "a") 'test1)
-                  (key-combo-define-global (kbd "a M-s") 'test2)
-                  (execute-kbd-macro (kbd "a M-s"))
-                  (should (eq (el-spy:called-count 'test1) 1))
-                  (should (eq (el-spy:called-count 'test2) 1))
-                  ))
-              (it ()
-                ;; no error
-                (with-el-spy
-                  (should-not (keymapp (key-binding (kbd "M-a"))));; prefix
-                  (defmock test1 () (interactive))
-                  (defmock test2 () (interactive))
-                  (key-combo-define-global (kbd "M-a") 'test1)
-                  (key-combo-define-global (kbd "M-a a") 'test2)
-                  (execute-kbd-macro (kbd "M-a a"))
-                  (should (eq (el-spy:called-count 'test1) 1))
-                  (should (eq (el-spy:called-count 'test2) 1))
-                  ))
-              (it ()
-                ;; no error
-                (with-el-spy
-                  (defmock test1 () (interactive))
-                  (defmock test2 () (interactive))
-                  (key-combo-define-global (kbd "M-a") 'test1)
-                  (key-combo-define-global (kbd "M-a M-a") 'test2)
-                  (execute-kbd-macro (kbd "M-a M-a"))
-                  (should (eq (el-spy:called-count 'test1) 1))
-                  (should (eq (el-spy:called-count 'test2) 1))
-                  ))
-              (it ()
-                (with-el-spy
-                  (defmock define-key (keymap key def))
-                  (key-combo-define-global (kbd "aa") 'test1)
-                  (should (eq (el-spy:called-count 'define-key) 2))
-                  (should (equal (mapcar '(lambda (x) (cdr x))
-                                         (el-spy:args-for-call 'define-key))
-                                 '(([key-combo _a]
-                                    key-combo-execute-original)
-                                   ([key-combo _a\ a]
-                                    test1))))
-                  ))
-              (it ()
-                (with-el-spy
-                  (should (keymapp (key-binding (kbd "M-s"))));; prefix
-                  (defmock define-key (keymap key def)
-                           (funcall (el-spy:get-original-func 'define-key)
-                                    keymap key def))
-                  (defmock test1 () (interactive))
-                  (key-combo-define-global (kbd "M-s a") 'test1)
-                  ;; (should (eq (el-spy:called-count 'define-key) 2))
-                  (should (equal (mapcar '(lambda (x) (cdr x))
-                                         (el-spy:args-for-call 'define-key))
-                                 '(([134217843]
-                                    key-combo-execute-original)
-                                   ([key-combo _M-s]
-                                    key-combo-execute-original)
-                                   ([key-combo _M-s\ a]
-                                    test1))))
-                  (should (eq (lookup-key global-map [key-combo _M-s])
-                              'key-combo-execute-original))
-                  (should (eq (el-spy:called-count 'test1) 0))
-                  (execute-kbd-macro (kbd "M-s a"))
-                  (should (eq (el-spy:called-count 'test1) 1))
-                  ))
+          (context "prefix"
+            (before
+              (buffer-enable-undo)
+              (key-combo-mode 1)
+              (defmock test1 () (interactive) (insert "test1"))
+              (defmock test2 () (interactive) (insert "test2"))
+              (defmock test3 () (interactive) (insert "test3"))
+              ;; (funcall el-spec:example) ;raise error?
               )
             (it ()
-              (should-error
-               (with-mock
-                 (mock (test1 *) :times 1)
-                 (key-combo-define-global (kbd "M-C-d") '(test1 test2)))))
+              (define-prefix-command 'test-map)
+              (global-set-key (kbd "M-s") 'test-map)
+              (global-set-key (kbd "M-s z") 'test3)
+
+              (should (string= (key-combo-test-helper-execute "M-s z")
+                               "test3"))
+              (should (eq (el-spy:called-count 'test1) 0))
+              (should (eq (el-spy:called-count 'test2) 0))
+              (should (eq (el-spy:called-count 'test3) 1))
+              )
             (it ()
-              ;; no error
-              (with-el-spy
-                (defmock test1 () (interactive))
-                (defmock test2 () (interactive))
-                (key-combo-mode 1)
-                (key-combo-define-global (kbd "M-C-d") 'test1)
-                (execute-kbd-macro (kbd "M-C-d"))
-                ;; (should (eq (el-spy:called-count 'test1) 1))
-                ))
+              (define-prefix-command 'test-map)
+              (global-set-key (kbd "M-s") 'test-map)
+              (global-set-key (kbd "M-s z") 'test3)
+
+              (define-key global-map
+                (key-combo-make-key-vector (kbd "M-s")) 'test1)
+              (define-key global-map
+                (key-combo-make-key-vector (kbd "M-s a")) 'test2)
+              (should (string= (key-combo-test-helper-execute "M-s a")
+                               "test2"))
+              (should (eq (el-spy:called-count 'test1) 1))
+              (should (eq (el-spy:called-count 'test2) 1))
+              (should (eq (el-spy:called-count 'test3) 0))
+              )
             (it ()
-              ;; no error
-              (with-el-spy
-                (defmock test1 () (interactive))
-                (defmock test2 () (interactive))
-                (key-combo-mode 1)
-                (key-combo-define-global (kbd "M-C-d") '(test1 test2))
-                (execute-kbd-macro (kbd "M-C-d"))
-                ;; (should (eq (el-spy:called-count 'test1) 1))
-                ))
+              (define-prefix-command 'test-map)
+              (global-set-key (kbd "M-s") 'test-map)
+              (define-key test-map (kbd "z")
+                'test3)
+              (define-key global-map
+                (key-combo-make-key-vector (kbd "M-s"))
+                'test1)
+              (define-key global-map
+                (key-combo-make-key-vector (kbd "M-s a"))
+                'test2)
+              (should (string= (key-combo-test-helper-execute "M-s")
+                               "test1"))
+              (should (eq (el-spy:called-count 'test1) 1))
+              (should (eq (el-spy:called-count 'test2) 0))
+              (should (eq (el-spy:called-count 'test3) 0))
+              )
             (it ()
-              ;; no error
-              (with-el-spy
-                (defmock test1 () (interactive))
-                (defmock test2 () (interactive))
-                (key-combo-mode 1)
-                (key-combo-define-global (kbd "M-C-d") '(test1 test2))
-                (execute-kbd-macro (kbd "M-C-d M-C-d"))
-                (should (eq (el-spy:called-count 'test1) 1))
-                (should (eq (el-spy:called-count 'test2) 1))
-                ))
+              (define-prefix-command 'test-map)
+              (global-set-key (kbd "M-s") 'test-map)
+              (define-key test-map (kbd "z")
+                'test3)
+              (define-key global-map
+                (key-combo-make-key-vector (kbd "M-s"))
+                'test1)
+              (define-key global-map
+                (key-combo-make-key-vector (kbd "M-s a"))
+                'test2)
+              (should (string= (key-combo-test-helper-execute "M-s z")
+                               "test3"))
+              (should (eq (el-spy:called-count 'test1) 1))
+              (should (eq (el-spy:called-count 'test2) 0))
+              (should (eq (el-spy:called-count 'test3) 1))
+              )
             (it ()
-              ;; no error
-              (with-el-spy
-                (defmock define-key (keymap key def) 0)
-                (use-local-map (make-sparse-keymap))
-                (key-combo-define-local "a" "a")
-                (should (eq (el-spy:called-count 'define-key) 1))))
-            (it ()
-              ;; no error
-              (with-el-spy
-                (defmock define-key (keymap key def) 0)
-                ;; (mock (define-key * * *) :times 1)
-                (use-local-map (make-sparse-keymap))
-                (key-combo-define-local "a" '("a"))
-                (should (eq (el-spy:called-count 'define-key) 1))))
-            (it ()
-              ;; no error
-              (with-el-spy
-                (defmock define-key (keymap key def) 0)
-                (use-local-map (make-sparse-keymap))
-                ;; (mock (define-key * * *) :times 3);; 1 for recursive call?
-                (key-combo-define-local "a" '("a" "b"))
-                (should (eq (el-spy:called-count 'define-key) 2))))
-            (it ()
-              ;; no error
-              (with-el-spy
-                (defmock define-key (keymap key def) 0)
-                (defmock lookup-key (keymap key) t)
-                (use-local-map (make-sparse-keymap))
-                ;; (mock (lookup-key * *) => t :times 2)
-                ;; (mock (define-key * * *) :times 2);; 1 for recursive call?
-                (key-combo-define-local "a" '("a" "b"))
-                (should (eq (el-spy:called-count 'define-key) 2))
-                (should (eq (el-spy:called-count 'lookup-key) 4))
-                )))
+              (define-prefix-command 'test-map)
+              (global-set-key (kbd "M-s") 'test-map)
+              (define-key test-map (kbd "z")
+                'test3)
+              (key-combo-define-global (kbd "M-s") 'test1)
+              (key-combo-define-global (kbd "M-s a") 'test2)
+              (should (string= (key-combo-test-helper-execute "M-s a")
+                               "test2"))
+              (should (eq (el-spy:called-count 'test1) 1))
+              (should (eq (el-spy:called-count 'test2) 1))
+              (should (eq (el-spy:called-count 'test3) 0))
+              )
+            (it ("multiple prefix")
+              ;; "a M-s"
+              )
+            (it ("multiple prefix2")
+              ;; "M-s M-s"
+              )
+            (it ("define key")
+              ;; "M-s M-s"
+              )
+            )
+          (it ()
+            (should-error
+             (with-mock
+               (mock (test1 *) :times 1)
+               (key-combo-define-global (kbd "M-C-d") '(test1 test2)))))
+          (it ()
+            ;; no error
+            (with-el-spy
+              (defmock test1 () (interactive))
+              (defmock test2 () (interactive))
+              (key-combo-mode 1)
+              (key-combo-define-global (kbd "M-C-d") 'test1)
+              (execute-kbd-macro (kbd "M-C-d"))
+              ;; (should (eq (el-spy:called-count 'test1) 1))
+              ))
+          (it ()
+            ;; no error
+            (with-el-spy
+              (defmock test1 () (interactive))
+              (defmock test2 () (interactive))
+              (key-combo-mode 1)
+              (key-combo-define-global (kbd "M-C-d") '(test1 test2))
+              (execute-kbd-macro (kbd "M-C-d"))
+              ;; (should (eq (el-spy:called-count 'test1) 1))
+              ))
+          (it ()
+            ;; no error
+            (with-el-spy
+              (defmock test1 () (interactive))
+              (defmock test2 () (interactive))
+              (key-combo-mode 1)
+              (key-combo-define-global (kbd "M-C-d") '(test1 test2))
+              (execute-kbd-macro (kbd "M-C-d M-C-d"))
+              (should (eq (el-spy:called-count 'test1) 1))
+              (should (eq (el-spy:called-count 'test2) 1))
+              ))
+          (it ()
+            ;; no error
+            (with-el-spy
+              (defmock define-key (keymap key def) 0)
+              (use-local-map (make-sparse-keymap))
+              (key-combo-define-local "a" "a")
+              (should (eq (el-spy:called-count 'define-key) 1))))
+          (it ()
+            ;; no error
+            (with-el-spy
+              (defmock define-key (keymap key def) 0)
+              ;; (mock (define-key * * *) :times 1)
+              (use-local-map (make-sparse-keymap))
+              (key-combo-define-local "a" '("a"))
+              (should (eq (el-spy:called-count 'define-key) 1))))
+          (it ()
+            ;; no error
+            (with-el-spy
+              (defmock define-key (keymap key def) 0)
+              (use-local-map (make-sparse-keymap))
+              ;; (mock (define-key * * *) :times 3);; 1 for recursive call?
+              (key-combo-define-local "a" '("a" "b"))
+              (should (eq (el-spy:called-count 'define-key) 2))))
+          (it ()
+            ;; no error
+            (with-el-spy
+              (defmock define-key (keymap key def) 0)
+              (defmock lookup-key (keymap key) t)
+              (use-local-map (make-sparse-keymap))
+              ;; (mock (lookup-key * *) => t :times 2)
+              ;; (mock (define-key * * *) :times 2);; 1 for recursive call?
+              (key-combo-define-local "a" '("a" "b"))
+              (should (eq (el-spy:called-count 'define-key) 2))
+              (should (eq (el-spy:called-count 'lookup-key) 4))
+              ))
           )
         (context "execute"
           (it ()
@@ -300,34 +332,34 @@
           (it ()
             (should (string= (key-combo-test-helper-execute "=") "="))))
         (context "no execute"
-          (it ()
-            (key-combo-command-execute (lambda () (insert "a")))
-            (should (string= (buffer-string) "a")))
-          (it ()
-            (should-error (key-combo-command-execute 'wrong-command)))
-          (it ()
-            (let ((last-command-event ?b))
-              (key-combo-command-execute 'self-insert-command))
-            (should (string= (buffer-string) "b")))
-          (it ()
-            (key-combo-command-execute (key-combo-get-command "a"))
-            (should (string= (buffer-string) "a")))
-          (it ()
-            (key-combo-command-execute (key-combo-get-command "a`!!'a"))
-            (should (string= (buffer-string) "aa"))
-            (should (eq (point) 2)))
-          (it ()
-            (buffer-enable-undo)
-            (let ((key-combo-undo-list))
-              (key-combo-command-execute (lambda() (insert "a")))
-              (key-combo-undo))
-            (should (string= (buffer-string) "")))
-          (it ()
-            (buffer-enable-undo)
-            (let ((key-combo-undo-list))
-              (key-combo-command-execute (key-combo-get-command "a`!!'a"))
-              (key-combo-undo))
-            (should (string= (buffer-string) "")))
+          ;; (it ()
+          ;;   (key-combo-command-execute (lambda () (insert "a")))
+          ;;   (should (string= (buffer-string) "a")))
+          ;; (it ()
+          ;;   (should-error (key-combo-command-execute 'wrong-command)))
+          ;; (it ()
+          ;;   (let ((last-command-event ?b))
+          ;;     (key-combo-command-execute 'self-insert-command))
+          ;;   (should (string= (buffer-string) "b")))
+          ;; (it ()
+          ;;   (key-combo-command-execute (key-combo-get-command "a"))
+          ;;   (should (string= (buffer-string) "a")))
+          ;; (it ()
+          ;;   (key-combo-command-execute (key-combo-get-command "a`!!'a"))
+          ;;   (should (string= (buffer-string) "aa"))
+          ;;   (should (eq (point) 2)))
+          ;; (it ()
+          ;;   (buffer-enable-undo)
+          ;;   (let ((key-combo-undo-list))
+          ;;     (key-combo-command-execute (lambda() (insert "a")))
+          ;;     (key-combo-undo))
+          ;;   (should (string= (buffer-string) "")))
+          ;; (it ()
+          ;;   (buffer-enable-undo)
+          ;;   (let ((key-combo-undo-list))
+          ;;     (key-combo-command-execute (key-combo-get-command "a`!!'a"))
+          ;;     (key-combo-undo))
+          ;;   (should (string= (buffer-string) "")))
           (it ()
             (should-error (key-combo-define-global "a" 'wrong-command)))
           (it ()
@@ -338,6 +370,7 @@
             (should (eq (key-combo-define-global (kbd "C-M-g") nil) nil)))))
       (context "in emacs-lisp-mode"
         (before
+          (buffer-enable-undo)
           (emacs-lisp-mode))
         (it ()
           (key-combo-define-global (kbd "M-s") "a"))
@@ -367,7 +400,28 @@
           (it ()
             (should (string= (key-combo-test-helper-execute "=") "= ")))
           (it ()
-            (should (string= (key-combo-test-helper-execute "==") "eq ")))
+            (should (string= (key-combo-test-helper-execute "= =") "eq ")))
+          (it ()
+            (should (string= (key-combo-test-helper-execute "=") "= "))
+            (undo -1)
+            (should (string= (buffer-string) "="))
+            )
+          (it ()
+            (insert "init:")
+            (should (string= (key-combo-test-helper-execute "=") "init:= "))
+            (undo -1)
+            (should (string= (buffer-string) "init:="))
+            (undo-more 1)
+            (should (string= (buffer-string) ""))
+            )
+          (it ()
+            (buffer-enable-undo)
+            (should (null buffer-undo-list))
+            (should (string= (key-combo-test-helper-execute "= =") "eq "))
+            ;; (primitive-undo 1 buffer-undo-list)
+            (undo -1)
+            (should (string= (buffer-string) "= "))
+            )
           (it ()
             (should (string= (key-combo-test-helper-execute ",") ",")))
           (it ()
@@ -437,9 +491,10 @@
             (should (string= (key-combo-test-helper-execute ".") "a.\"\"")))
           )
         (include-examples "C-a")
-        (include-examples "check pre-command-hook"))
+        (include-examples "check post-command-hook"))
       (context "in ruby"
         (before
+          (buffer-enable-undo)
           (key-combo-mode 1)
           (ruby-mode)
           (when (boundp 'auto-complete-mode)
@@ -459,6 +514,7 @@
           (should (string= (key-combo-test-helper-execute "||=") " ||= "))))
       (context "in c-mode"
         (before
+          (buffer-enable-undo)
           ;; (key-combo-mode 1)
           (c-mode))
         (context "execute+"
@@ -516,7 +572,7 @@
             (should (string= (key-combo-test-helper-execute "=") " = ")))
           (it ()
             (should (string= (key-combo-test-helper-execute "=") " = "))
-            (undo)
+            (undo -1)
             (should (string= (buffer-string) "="))
             )
           (it ()
@@ -566,30 +622,24 @@
           ;;   (key-combo-command-execute (key-combo-key-binding lookup-cmd)))
           (it ()
             (should (string=
-                     (key-combo-test-helper-binding-execute "=") " = ")))
+                     (key-combo-test-helper-execute "=") " = ")))
           (it ()
             (should (string=
-                     (key-combo-test-helper-binding-execute "==") " == ")))
+                     (key-combo-test-helper-execute "==") " == ")))
           (it ()
             (should (string=
-                     (key-combo-test-helper-binding-execute [?=]) " = ")))
+                     (key-combo-test-helper-execute "=>") " => ")))
           (it ()
             (should (string=
-                     (key-combo-test-helper-binding-execute [?= ?=]) " == ")))
-          (it ()
-            (should (string=
-                     (key-combo-test-helper-binding-execute [?= ?>]) " => ")))
-          (it ()
-            (should (string=
-                     (key-combo-test-helper-binding-execute [?= ?= ?=])
+                     (key-combo-test-helper-execute "===")
                      " === ")))
           ;; (it ()
           ;;   (funcall (key-combo-key-binding [?= ?= ?= ?=]))
           ;;   (should (string= (buffer-string) " ==== ")))
-          (it ()
-            (key-combo-define-global (kbd "C-M-h") " == ")
-            (key-combo-command-execute (key-combo-key-binding (kbd "C-M-h")))
-            (should (equal (buffer-string) " == ")))
+          ;; (it ()
+          ;;   (key-combo-define-global (kbd "C-M-h") " == ")
+          ;;   (key-combo-command-execute (key-combo-key-binding (kbd "C-M-h")))
+          ;;   (should (equal (buffer-string) " == ")))
           (it ()
             (should-not
              (equal
@@ -600,12 +650,12 @@
           ;;   (execute-kbd-macro (kbd "C-M-h C-M-h"))
           ;;   (should (string= (buffer-string) " === "))
           ;;   )
-          (it ()
-            (key-combo-define-global (kbd "C-M-h C-M-h") " === ")
-            (key-combo-command-execute
-             (key-combo-key-binding (kbd "C-M-h C-M-h")))
-            (should (string= (buffer-string) " === "))
-            )
+          ;; (it ()
+          ;;   (key-combo-define-global (kbd "C-M-h C-M-h") " === ")
+          ;;   (key-combo-command-execute
+          ;;    (key-combo-key-binding (kbd "C-M-h C-M-h")))
+          ;;   (should (string= (buffer-string) " === "))
+          ;;   )
           (it ()
             (should-not (key-combo-key-binding [?= ?= ?= ?=])))
           (it ()
@@ -614,43 +664,4 @@
             (should (string= (buffer-string) "a  = ")))
           )
         )
-      )
-    ))
-
-;; (defun key-combo-prefix-command ()
-;;   (interactive)
-;;   (message "key-combo-pre")
-;;   )
-
-;; (global-set-key (kbd "M-s b") 'test3)
-;; (execute-kbd-macro (kbd "M-s b"))
-
-;; (defun key-combo-unread-command (cmd)
-;;   (interactive)
-;;     (setq unread-command-events
-;;           (append unread-command-events (listify-key-sequence cmd)))
-;;   )
-
-;; (progn
-;;   (key-combo-mode -1)
-;;   (key-combo-unread-command (kbd "M-s"))
-;;   (key-combo-unread-command (kbd "b"))
-;;   (key-combo-mode 1)
-;;   )
-
-;; (define-key key-combo-mode-map
-;;   (kbd "M-s") 'key-combo-prefix-command)
-
-;; (define-key key-combo-mode-map
-;;   (kbd "M-s") nil)
-
-;; (define-key global-map
-;;   (key-combo-make-key-vector (kbd "M-s")) 'test1)
-
-;; (define-key global-map
-;;   (key-combo-make-key-vector (kbd "M-s a")) 'test2)
-
-;; key-combo-mode-map
-
-;; (key-combo-define-global (kbd "M-s a") 'test1)
-
+      )))
