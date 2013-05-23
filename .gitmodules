@@ -4,6 +4,6 @@
 [submodule "lib/el-spec"]
 	path = lib/el-spec
 	url = https://github.com/uk-ar/el-spec.git
-[submodule "lib/el-mock"]
-	path = lib/el-mock
-	url = https://github.com/emacsmirror/el-mock.git
+[submodule "lib/el-spy"]
+	path = lib/el-spy
+	url = https://github.com/uk-ar/el-spy

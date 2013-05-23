@@ -34,10 +34,10 @@
  'load-path
  (key-combo-test-join-path key-combo-root-dir "lib" "el-spec"))
 
-;; el-mock
+;; el-spy
 (add-to-list
  'load-path
- (key-combo-test-join-path key-combo-root-dir "lib" "el-mock"))
+ (key-combo-test-join-path key-combo-root-dir "lib" "el-spy"))
 
 ;; Load tests
 (load "key-combo-test")
