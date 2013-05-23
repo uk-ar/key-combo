@@ -161,10 +161,6 @@ The binding is probably a symbol with a function definition."
       t
     nil))
 
-;;(browse-url "http://q.hatena.ne.jp/1226571494")
-(defun key-combo-count-boundary (last-undo-list)
-  (length (remove-if-not 'null last-undo-list)))
-
 (defun key-combo-execute-macro (string)
   (cond
    ((string-match "`!!'" string)
@@ -191,8 +187,6 @@ The binding is probably a symbol with a function definition."
    ((listp command) command)
    ((not (stringp command)) nil)
    ;; string
-   ;; (t
-   ;;  command)
    ;; do not map string because it changes this-command-keys in post-command-hook
    (t (lexical-let ((com command))
         (lambda ()
@@ -292,6 +286,10 @@ which in most cases is shared with all other buffers in the same major mode.
       (goto-char (car key-combo-start-position))
       ;; (set-window-start (selected-window) (cdr key-combo-start-position))
       )))
+
+;;(browse-url "http://q.hatena.ne.jp/1226571494")
+(defun key-combo-count-boundary (last-undo-list)
+  (length (remove-if-not 'null last-undo-list)))
 
 (defun key-combo-undo ()
   "returns buffer undo list"
