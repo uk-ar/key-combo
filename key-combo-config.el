@@ -39,7 +39,7 @@
     ))
 
 (defvar key-combo-lisp-default
-  '(("."  . (key-combo-execute-original))
+  `(("."  . (key-combo-execute-original))
     (". SPC" . " . ")
     ("SPC"  . (key-combo-execute-original))
     ("SPC ." . " . ")
@@ -47,15 +47,11 @@
     (",@" . " ,@");; for macro
     ;; (";"  . ";; ")
     (";"  . (";; " ";;; " "; ")) ;cannot use because of comment
-    ;; (";=" . ";=> ")
+    (";=" . ";=> ");; for xmp
     ("="  . ("= " "eq " "equal "))
     (">=" . ">= ")
-    ("C-M-x" . (key-combo-execute-original
-                (lambda ()
-                  (interactive)
-                  (let ((current-prefix-arg '(4)))
-                    (call-interactively 'eval-defun)))));; lamda for message
-    ("-"  . (key-combo-execute-original));; for symbol name
+    ("C-M-x" . (key-combo-execute-original ,(kbd "C-u C-M-x")));; lamda for message
+    ;; ("-"  . (key-combo-execute-original));; for symbol name
     ;; ("/" . ("/`!!'/" "/* `!!' */") );;for regexp, comment
     ))
 

@@ -114,6 +114,8 @@
 (require 'key-combo-config)
 ;; for remove-if
 
+(defvar key-combo-debug nil)
+
 (defun key-combo-describe ()
   "List key combo bindings in a help buffer."
   (interactive)
@@ -185,18 +187,26 @@ The binding is probably a symbol with a function definition."
   (cond
    ((functionp command) command)
    ((listp command) command)
-   ((not (stringp command)) nil)
-   ;; string
-   ;; do not map string because it changes this-command-keys in post-command-hook
-   (t (lexical-let ((com command))
-        (lambda ()
-          (interactive)
-          (when (and (not (null buffer-undo-list))
-                     (not (eq buffer-undo-list t))
-                     (eq (car buffer-undo-list) nil))
-            (setq buffer-undo-list (cdr buffer-undo-list)))
-          (key-combo-execute-macro com)))
-      )
+   ((stringp command)
+    ;; do not map string because it changes this-command-keys in post-command-hook
+    (lexical-let ((com command))
+      (lambda ()
+        (interactive)
+        (when (and (not (null buffer-undo-list))
+                   (not (eq buffer-undo-list t))
+                   (eq (car buffer-undo-list) nil))
+          (setq buffer-undo-list (cdr buffer-undo-list)))
+        (key-combo-execute-macro com))))
+   ((vectorp command)
+    (lexical-let ((com command))
+      (lambda ()
+        (interactive)
+        (key-combo-mode -1)
+        (execute-kbd-macro com)
+        (key-combo-mode 1)
+        )
+      ))
+   (t (error "%s is not command" command))
    );;end cond
   )
 
@@ -252,6 +262,23 @@ If COMMANDS is list, treated as sequential commands.
       (define-key keymap
         (key-combo-make-key-vector key)
         (key-combo-get-command commands))
+      (when key-combo-debug
+        (message
+         "%s |%s"
+         (mapconcat
+          (lambda (k)
+            (if (null k) " " (single-key-description k)))
+          ;; nthcar
+          (reverse (last (reverse (append key (make-list 3 nil) nil)) 3))
+          "|")
+         (cond ((stringp commands) (concat "`" commands "`"))
+               ((vectorp commands) (concat "<kbd>"
+                                           (key-description commands)
+                                           "</kbd>"))
+               ;; ((eq commands 'key-combo-execute-original))
+               (t (format "%S" commands))
+               )
+        ))
       ))))
 
 (defun key-combo-define-global (keys command)
@@ -381,7 +408,7 @@ which in most cases is shared with all other buffers in the same major mode.
           isearch-mode
           (and (key-combo-comment-or-stringp)
                (not in-key-combo)))
-      (when in-key-combo
+      (when (and in-key-combo (not (eq t buffer-undo-list)))
         (setq buffer-undo-list
               (append buffer-undo-list key-combo-original-undo-list)))
       (key-combo-unread-events events)
@@ -443,7 +470,7 @@ which in most cases is shared with all other buffers in the same major mode.
       )
      ;; finish
      (t
-      (when in-key-combo
+      (when (and in-key-combo (not (eq t buffer-undo-list)))
         (setq buffer-undo-list
               (append buffer-undo-list key-combo-original-undo-list)))
       (key-combo-unread-events events)
@@ -454,5 +481,10 @@ which in most cases is shared with all other buffers in the same major mode.
     )
   )
 
+;; please define message
+;; print table
+
+;; define key
+;; define keys
 (provide 'key-combo)
 ;;; key-combo.el ends here
