@@ -112,13 +112,14 @@
 ;; Code goes here
 (require 'cl)
 ;; for remove-if
-
 (defvar key-combo-debug nil)
 
 (defun key-combo-describe ()
   "List key combo bindings in a help buffer."
   (interactive)
   (describe-bindings [key-combo]))
+
+;; (mac-input-source-is-ascii-capable)
 
 (defun key-combo-make-key-vector (key)
   "Return vector
@@ -392,6 +393,8 @@ which in most cases is shared with all other buffers in the same major mode.
     ;; Let the debugger run
     ((debug error) (signal (car err) (cdr err)))))
 
+;;input-method-function
+
 (defun key-combo-post-command-function ()
   (let* ((echo-keystrokes 0)
          (this-command nil)
@@ -399,7 +402,8 @@ which in most cases is shared with all other buffers in the same major mode.
                            (if (< 0 (length (this-command-keys-vector)))
                                (aref (this-command-keys-vector) 0))))
          (keys-vector (if in-key-combo (key-combo-keys-vector) nil))
-         (events (vector (read-event))))
+         (events (vector (read-key)))
+         )
     (cond
      ;; finish:disabled modes
      ((or (not key-combo-mode)
@@ -553,7 +557,8 @@ which in most cases is shared with all other buffers in the same major mode.
     ("=*" . " =* ")                     ;for c
     ("+"  . (" + " "++"))
     ("+=" . " += ")
-    ("-"  . (" - " "--"))               ;undo when unary operator
+    ;; ("-"  . (" - " "--"))                ;undo when unary operator
+    ("-"  . ("-" "--"))               ;abuse in regexp
     ("-=" . " -= ")
     ("->" . " -> ");; for haskell,coffee script. overwrite in c
     (">"  . (key-combo-execute-original " >> "))
@@ -573,7 +578,7 @@ which in most cases is shared with all other buffers in the same major mode.
     ("!~" . " !~ ")   ; for ruby
     ("~" . key-combo-execute-original)
     ;; for unary operator
-    ("::" . " :: ") ;; for haskell
+    ;; ("::" . " :: ") ;; for haskell not in ruby
     ;; (":" . ":");;for ruby symbol
     ("&"  . (" & " " && "))             ;overwrite in c
     ("&=" . " &= ");; for c
@@ -608,6 +613,11 @@ which in most cases is shared with all other buffers in the same major mode.
     )
   "Default binding which enabled by `key-combo-common-mode-hooks'"
   :group 'key-combo)
+
+;; rhtml-mode
+;; <% rinari-insert-erb-skeleton
+;; (key-combo-define-local "<%" 'rinari-insert-erb-skeleton)
+;; (key-combo-define-local ":" ":")
 
 (defcustom key-combo-org-default
   '(("C-a" . (org-beginning-of-line
@@ -681,7 +691,7 @@ which in most cases is shared with all other buffers in the same major mode.
                            makefile-mode-hook
                            js2-mode-hook)
                          'key-combo-property-default
-                         '((":"  . ": ")))
+                         '((":"  . ":")));; not work in erb
   ;; align is better for property?
   )
 
