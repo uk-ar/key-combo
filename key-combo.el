@@ -259,9 +259,6 @@ If COMMANDS is list, treated as sequential commands.
         ;; (key-combo-define-prefix (vconcat last-key)
         ;;                          'key-combo-prefix-command)
         )
-      (define-key keymap
-        (key-combo-make-key-vector key)
-        (key-combo-get-command commands))
       (when key-combo-debug
         (message
          "%s |%s"
@@ -278,7 +275,10 @@ If COMMANDS is list, treated as sequential commands.
                ;; ((eq commands 'key-combo-execute-original))
                (t (format "%S" commands))
                )
-        ))
+         ))
+      (define-key keymap
+        (key-combo-make-key-vector key)
+        (key-combo-get-command commands))
       ))))
 
 (defun key-combo-define-global (keys command)
@@ -402,7 +402,7 @@ which in most cases is shared with all other buffers in the same major mode.
                            (if (< 0 (length (this-command-keys-vector)))
                                (aref (this-command-keys-vector) 0))))
          (keys-vector (if in-key-combo (key-combo-keys-vector) nil))
-         (events (vector (read-key)))
+         (events (vector (read-event)))
          )
     (cond
      ;; finish:disabled modes
