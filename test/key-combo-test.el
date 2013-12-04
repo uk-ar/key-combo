@@ -327,6 +327,10 @@
         (it ()
           (should (string= (key-combo-test-helper-execute ">") ">")))
         (it ()
+          (should (string= (key-combo-test-helper-execute "C-u 3 >") ">>>")))
+        (it ()
+          (should (string= (key-combo-test-helper-execute "M-3 >") ">>>")))
+        (it ()
           (should (string= (key-combo-test-helper-execute "=") "="))))
       (context "no execute"
         ;; (it ()

@@ -480,7 +480,9 @@ which in most cases is shared with all other buffers in the same major mode.
       ;; no key combo
       )
      )
-    (reset-this-command-lengths)
+    (unless prefix-arg
+      (reset-this-command-lengths)
+      )
     )
   )
 
