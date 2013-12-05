@@ -58,6 +58,7 @@
 ;;
 ;; Revision 1.5 2012/04/20 22:24:26
 ;; * Bug fix when just after string.
+;; * Add !== for js and php's not triple-equal by tomykaira.
 ;; * Change some default settings.
 ;;
 ;; Revision 1.4.1 2012/04/04 21:05:48
@@ -402,7 +403,7 @@ which in most cases is shared with all other buffers in the same major mode.
                            (if (< 0 (length (this-command-keys-vector)))
                                (aref (this-command-keys-vector) 0))))
          (keys-vector (if in-key-combo (key-combo-keys-vector) nil))
-         (events (vector (read-event)))
+         (events (vector (read-event)));; read-key
          )
     (cond
      ;; finish:disabled modes
@@ -441,13 +442,13 @@ which in most cases is shared with all other buffers in the same major mode.
        (+ 1 (key-combo-count-boundary buffer-undo-list)) buffer-undo-list)
       (key-combo-unread-events (key-combo-make-key-vector events))
       )
-     ;; fall back prefix
+     ;; fall back prefix key
      ((and in-key-combo
            (not (key-combo-key-binding (vconcat keys-vector events)))
            (key-binding (vconcat keys-vector events)))
       ;; finish
-      ;; fall back prefix
-      ;; Todo: multiple prefix
+      ;; fall back prefix key
+      ;; Todo: multiple prefix key
       (undo-boundary)
       (primitive-undo
        (+ 1 (key-combo-count-boundary buffer-undo-list)) buffer-undo-list)
