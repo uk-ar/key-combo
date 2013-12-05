@@ -709,6 +709,13 @@ which in most cases is shared with all other buffers in the same major mode.
   (dolist (key keys)
     (key-combo-define map (key-combo-read-kbd-macro (car key)) (cdr key))))
 
+(defadvice mac-handle-input-method-change (after key-combo-mac-handle-input-method-chang activate)
+  (if (mac-input-source-is-ascii-capable)
+      (progn
+        (key-combo-mode-maybe))
+    (key-combo-mode -1)
+    (keyboard-quit)
+    ))
 ;; please define message
 ;; print table
 
