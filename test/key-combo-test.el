@@ -1,23 +1,17 @@
 (require 'ert)
 (require 'el-spec)
-(require 'el-spy)
 
 (require 'key-combo)
 (key-combo-load-default)
 
-(defun test1 ()
+(defun test1()
   (interactive)
   (message "test1")
   )
 
-(defun test2 ()
+(defun test2()
   (interactive)
   (message "test2")
-  )
-
-(defun test3 ()
-  (interactive)
-  (message "test3")
   )
 
 (defun key-combo-test-helper-execute (cmd)
@@ -34,30 +28,53 @@
   (substring-no-properties (buffer-string)))
 
 (dont-compile
-  (describe ("key-combo in temp-buffer")
-    (shared-examples "check post-command-hook"
-      (it ()
-        (key-combo-mode 1)
-        (should (memq 'key-combo-post-command-function
-                      post-command-hook)))
-      (it ()
-        (key-combo-mode -1)
-        (should-not (memq 'key-combo-post-command-function
-                          post-command-hook))))
-    (shared-examples "C-a"
-      (before
-        (insert "B\n IP")
-        (key-combo-mode 1))
-      (it ()
-        (should (key-combo-key-binding (kbd "C-a C-a"))))
-      ;; (it ()
-      ;;   (key-combo-mode -1)
-      ;;   (should-not (key-combo-key-binding (kbd "C-a C-a"))))
-      (it ()
-        (key-combo-test-helper-execute "C-a")
-        (should (equal (char-to-string (following-char)) "I"))
-        (should (eq real-last-command 'back-to-indentation))
+  (when (fboundp 'describe)
+    (describe ("key-combo in temp-buffer" :vars ((mode)))
+      (shared-examples "check pre-command-hook"
+        (it ()
+          (key-combo-mode 1)
+          (should (memq 'key-combo-pre-command-function pre-command-hook)))
+        (it ()
+          (key-combo-mode -1)
+          (should-not (memq 'key-combo-pre-command-function pre-command-hook))))
+      (shared-examples "C-a"
+        (before
+          (insert "B\n IP")
+          (key-combo-mode 1))
+        (it ()
+          (should (key-combo-key-binding (kbd "C-a C-a"))))
+        ;; (it ()
+        ;;   (key-combo-mode -1)
+        ;;   (should-not (key-combo-key-binding (kbd "C-a C-a"))))
+        (it ()
+          (key-combo-test-helper-execute "C-a")
+          (should (equal (char-to-string (following-char)) "I")))
+        (it ()
+          (key-combo-test-helper-execute "C-a C-a")
+          (should (equal (char-to-string (following-char)) " ")))
+        (it ()
+          (key-combo-test-helper-execute "C-a C-a C-a")
+          (should (equal (char-to-string (following-char)) "B")))
+        ;; fail in temp buffer?
+        ;; (it (:vars ((cmd "C-a C-a C-a C-a")))
+        ;;   (backward-char)
+        ;;   (should (equal (char-to-string (following-char)) "P")))
         )
+
+      (around
+        (setq key-combo-command-keys nil)
+        (with-temp-buffer
+          (switch-to-buffer (current-buffer))
+          (let ((key-combo-mode-map
+                 (copy-keymap key-combo-mode-map))
+                (global-map-org (current-global-map))
+                (global-map (copy-keymap (current-global-map))))
+            (unwind-protect
+                (progn
+                  (use-global-map global-map)
+                  (funcall el-spec:example))
+              (use-global-map global-map-org)))))
+
       (it ()
         (key-combo-test-helper-execute "C-a C-a")
         (should (equal (char-to-string (following-char)) " "))
@@ -74,112 +91,31 @@
       ;; (it (:vars ((cmd "C-a C-a C-a C-a")))
       ;;   (backward-char)
       ;;   (should (equal (char-to-string (following-char)) "P")))
-      )
 
-    (around
-      (with-temp-buffer
-        (switch-to-buffer (current-buffer))
-        (let ((global-map-org (current-global-map))
-              (global-map (let ((map (make-sparse-keymap)))
-                            (set-keymap-parent map (current-global-map)) map)))
-          (unwind-protect
-              (with-el-spy
-               (use-global-map global-map)
-               (funcall el-spec:example))
-            (use-global-map global-map-org)))))
-
-    (it "is key-combo element"
-      (should (key-combo-elementp ">"))
-      (should (key-combo-elementp '(lambda() (interactive) ())))
-      (should (key-combo-elementp 'nil))
-      (should (key-combo-elementp 'self-insert-command)))
-    (it "is not key-combo element"
-      (should-not (key-combo-elementp '(">")))
-      (should-not (key-combo-elementp '((lambda() (interactive) ()))))
-      (should-not (key-combo-elementp '(nil)))
-      (should-not (key-combo-elementp '(self-insert-command)))
-      (should-not (key-combo-elementp 'wrong-command)))
-    (it "can define & lookup"
-      (should (key-combo-test-helper-define-lookup '(lambda()(interactive)())))
-      (should (key-combo-test-helper-define-lookup ">"))
-      (should (key-combo-test-helper-define-lookup 'self-insert-command))
-      (should (key-combo-test-helper-define-lookup '((lambda()(interactive)()))))
-      (should (key-combo-test-helper-define-lookup '(">")))
-      (should (key-combo-test-helper-define-lookup '(self-insert-command)))
-      (should (key-combo-test-helper-define-lookup '(">" ">")))
-      (should (key-combo-test-helper-define-lookup '(">" (lambda()(interactive)()))))
-      (should (key-combo-test-helper-define-lookup '((lambda()(interactive)()) ">")))
-      (should
-       (key-combo-test-helper-define-lookup '((lambda()(interactive)()) (lambda()(interactive)()))))
-      (should
-       (key-combo-test-helper-define-lookup '(">" self-insert-command)))
-      (should
-       (key-combo-test-helper-define-lookup '(self-insert-command ">")))
-      (should
-       (key-combo-test-helper-define-lookup
-        '(self-insert-command self-insert-command)))
-      )
-    ;;(include-examples "invalid examples name")
-    (include-examples "check post-command-hook")
-    (include-examples "C-a")
-    (it "undo"
-      ;; with-current-buffer (get-buffer-create "hoge")
-      (erase-buffer)
-      (buffer-disable-undo)
-      (buffer-enable-undo)
-      (insert "init:")
-      (undo-boundary)
-      (setq buffer-undo-list nil)
-
-      (insert "1")
-      (undo-boundary)
-      (should (string= (buffer-string) "init:1"))
-
-      (should (= (key-combo-count-boundary buffer-undo-list) 1))
-      (primitive-undo 2 buffer-undo-list)
-      (undo-boundary)
-      (should (string= (buffer-string) "init:"))
-      (setq buffer-undo-list (cdr buffer-undo-list))
-      (insert "2")
-      (undo-boundary)
-      (should (string= (buffer-string) "init:2"))
-
-      (should (= (key-combo-count-boundary buffer-undo-list) 2))
-      (primitive-undo 3 buffer-undo-list)
-      (undo-boundary)
-
-      (should (string= (buffer-string) "init:"))
-      (setq buffer-undo-list (cdr buffer-undo-list))
-      (insert "3")
-      (undo-boundary)
-      (should (string= (buffer-string) "init:3"))
-      (should (= (point) 7))
-
-      (should (= (key-combo-count-boundary buffer-undo-list) 3))
-      (primitive-undo 4 buffer-undo-list)
-      (should (string= (buffer-string) "init:"))
-      (insert "4")
-      (undo-boundary)
-      (should (string= (buffer-string) "init:4"))
-      (should (= (point) 7))
-
-      (undo)
-      (should (string= (buffer-string) "init:3"))
-      (should (= (point) 7))
-
-      (undo-more 1)
-      (should (string= (buffer-string) "init:2"))
-      (should (= (point) 7))
-
-      (undo-more 1)
-      (should (string= (buffer-string) "init:1"))
-      (should (= (point) 7))
-      )
-
-    (context "in default-mode"
-      (context "with mock"
-        (context "prefix"
-          (before
+      (context "in default-mode"
+        (context "execute"
+          (it ()
+            (should (string= (key-combo-test-helper-execute ">") ">")))
+          (it ()
+            (should (string= (key-combo-test-helper-execute "=") "="))))
+        (context "no execute"
+          (it ()
+            (key-combo-command-execute (lambda () (insert "a")))
+            (should (string= (buffer-string) "a")))
+          (it ()
+            (should-error (key-combo-command-execute 'wrong-command)))
+          (it ()
+            (let ((last-command-event ?b))
+              (key-combo-command-execute 'self-insert-command))
+            (should (string= (buffer-string) "b")))
+          (it ()
+            (key-combo-command-execute (key-combo-get-command "a"))
+            (should (string= (buffer-string) "a")))
+          (it ()
+            (key-combo-command-execute (key-combo-get-command "a`!!'a"))
+            (should (string= (buffer-string) "aa"))
+            (should (eq (point) 2)))
+          (it ()
             (buffer-enable-undo)
             (key-combo-mode 1)
             (defmock test1 () (interactive) (insert "test1"))
@@ -342,6 +278,48 @@
           (it ()
             (insert ";")
             (should (string= (key-combo-test-helper-execute "=") ";=")))
+          )
+        (context "with mock"
+          (when (require 'el-mock nil t)
+            (it ()
+              (should-error
+               (with-mock
+                 (mock (test1 *) :times 1)
+                 (key-combo-define-global (kbd "M-C-d") '(test1 test2)))))
+            (it ()
+              ;; no error
+              (with-mock
+                (mock (test1 *) :times 1)
+                (key-combo-define-global (kbd "M-C-d") '(test1 test2))
+                (execute-kbd-macro (kbd "M-C-d"))))
+            (it ()
+              ;; no error
+              (with-mock
+                (mock (test1 *) :times 1)
+                (mock (test2 *) :times 1)
+                (key-combo-define-global (kbd "M-C-d") '(test1 test2))
+                (execute-kbd-macro (kbd "M-C-d M-C-d"))))
+            (it ()
+              ;; no error
+              (with-mock
+                (mock (define-key * * *) :times 1)
+                (key-combo-define-local "a" "a")))
+            (it ()
+              ;; no error
+              (with-mock
+                (mock (define-key * * *) :times 1)
+                (key-combo-define-local "a" '("a"))))
+            (it ()
+              ;; no error
+              (with-mock
+                (mock (define-key * * *) :times 3);; 1 for recursive call?
+                (key-combo-define-local "a" '("a" "b"))))
+            (it ()
+              ;; no error
+              (with-mock
+                (mock (lookup-key * *) => t :times 2)
+                (mock (define-key * * *) :times 2);; 1 for recursive call?
+                (key-combo-define-local "a" '("a" "b")))))
           )
         (context "in skk-mode"
           (when (require 'skk-autoloads nil t)
@@ -706,4 +684,3 @@
         )
       )
     ))
-;; todo:test for eldoc
