@@ -214,6 +214,7 @@ The binding is probably a symbol with a function definition."
       ;;for unset key
       (null element)))
 
+;;;###autoload
 (defun key-combo-define (keymap key commands)
   "In KEYMAP, define key sequence KEY as COMMANDS.
 KEYMAP is a keymap.\n
@@ -252,6 +253,7 @@ If COMMANDS is list, treated as sequential commands."
         (key-combo-make-key-vector key)
         (key-combo-get-command commands))))))
 
+;;;###autoload 
 (defun key-combo-define-global (keys command)
   "Give KEY a global binding as COMMAND.\n
 See also `key-combo-define'\n
@@ -261,6 +263,7 @@ that you make with this function."
   ;;(interactive "sSet key chord globally (2 keys): \nCSet chord \"%s\" to command: ")
   (key-combo-define (current-global-map) keys command))
 
+;;;###autoload
 (defun key-combo-define-local (keys command)
   "Give KEY a local binding as COMMAND.\n
 See also `key-combo-define'\n
