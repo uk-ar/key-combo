@@ -611,6 +611,10 @@ which in most cases is shared with all other buffers in the same major mode."
 (eval-after-load "eldoc"
   '(eldoc-add-command "key-combo"))
 
+(eval-after-load "company"
+  '(add-to-list 'company-begin-commands 'key-combo))
+
+
 ;; (listify-key-sequence
 ;;  (kbd "M-C-d M-C-d"))
 ;; (listify-key-sequence
