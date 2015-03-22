@@ -1,5 +1,5 @@
 ;;; key-combo.el --- map key sequence to commands
-
+;; 
 ;;-------------------------------------------------------------------
 ;;
 ;; Copyright (C) 2011, 2012 Yuuki Arisawa
@@ -22,7 +22,7 @@
 ;; MA 02111-1307 USA
 ;;
 ;;-------------------------------------------------------------------
-
+;; 
 ;; Author: Yuuki Arisawa <yuuki.ari@gmail.com>
 ;; URL: https://github.com/uk-ar/key-combo
 ;; Created: 30 November 2011
@@ -30,11 +30,11 @@
 ;; Keywords: keyboard input
 
 ;;; Commentary:
-
+;; 
 ;; ########   Compatibility   ########################################
 ;;
 ;; Works with Emacs-23.2.1, 23.1.1
-
+;; 
 ;; ########   Quick start   ########################################
 ;;
 ;; Add to your ~/.emacs
@@ -52,7 +52,7 @@
 ;;  (key-combo-load-default)
 
 ;;; History:
-
+;; 
 ;; Revision 1.5.1 2012/06/06 21:36:28
 ;; * Bug fix which use flex-autopair by mistake.
 ;;
@@ -110,8 +110,10 @@
 ;; Revision 0.1
 ;; * Initial revision
 
-;; Code goes here
+;; Code
+
 (require 'cl)
+
 ;; for remove-if
 (defvar key-combo-debug nil)
 
@@ -150,8 +152,7 @@ The binding is probably a symbol with a function definition."
 
 (defun key-combo-execute-original ()
   (interactive)
-  (call-interactively (key-binding (this-command-keys-vector)))
-  )
+  (call-interactively (key-binding (this-command-keys-vector))))
 
 (defalias 'key-combo-execute-orignal 'key-combo-execute-original)
 
@@ -186,8 +187,7 @@ The binding is probably a symbol with a function definition."
     (destructuring-bind (pre post) (split-string string "`!!'")
       (key-combo-execute-macro pre)
       (save-excursion
-        (key-combo-execute-macro post))
-      ))
+        (key-combo-execute-macro post))))
    (t
     (let ((p (point)))
       (if (and (eq ?  (char-before))
@@ -206,16 +206,15 @@ The binding is probably a symbol with a function definition."
    ((listp command) command)
    ((not (stringp command)) nil)
    (t
-    command)
-   );;end cond
-  )
+    command)))
 
 (defun key-combo-elementp (element)
   (or (functionp element)
       (stringp element)
-      (null element));;for unset key
-  )
+      ;;for unset key
+      (null element)))
 
+;;;###autoload
 (defun key-combo-define (keymap key commands)
   "In KEYMAP, define key sequence KEY as COMMANDS.
 KEYMAP is a keymap.\n
@@ -225,8 +224,7 @@ above 127 (such as ISO Latin-1) can be included if you use a vector.\n
 COMMANDS can be an interactive function, a string, nil, or list of these COMMAND.
 If COMMANDS is string, treated as a smartchr flavor keyboard macro.
 If COMMANDS is nil, the key-chord is removed.
-If COMMANDS is list, treated as sequential commands.
-"
+If COMMANDS is list, treated as sequential commands."
   ;;copy from key-chord-define
   (let ((base-key (list (car (listify-key-sequence key)))))
     (cond
@@ -250,29 +248,27 @@ If COMMANDS is list, treated as sequential commands.
                  (null first))
         (define-key keymap
             (key-combo-make-key-vector base-key)
-            'key-combo-execute-original))
-        )
+            'key-combo-execute-original)))
       (define-key keymap
         (key-combo-make-key-vector key)
-        (key-combo-get-command commands))
-      ))))
+        (key-combo-get-command commands))))))
 
+;;;###autoload 
 (defun key-combo-define-global (keys command)
   "Give KEY a global binding as COMMAND.\n
 See also `key-combo-define'\n
 Note that if KEY has a local binding in the current buffer,
 that local binding will continue to shadow any global binding
-that you make with this function.
-"
+that you make with this function."
   ;;(interactive "sSet key chord globally (2 keys): \nCSet chord \"%s\" to command: ")
   (key-combo-define (current-global-map) keys command))
 
+;;;###autoload
 (defun key-combo-define-local (keys command)
   "Give KEY a local binding as COMMAND.\n
 See also `key-combo-define'\n
 The binding goes in the current buffer's local map,
-which in most cases is shared with all other buffers in the same major mode.
-"
+which in most cases is shared with all other buffers in the same major mode."
   ;;(interactive "sSet key chord globally (2 keys): \nCSet chord \"%s\" to command: ")
   (key-combo-define (current-local-map) keys command))
 
@@ -282,8 +278,7 @@ which in most cases is shared with all other buffers in the same major mode.
     ;; use beginning-of-buffer for keydescription
     ("C-a"   . (back-to-indentation move-beginning-of-line
                                     beginning-of-buffer key-combo-return))
-    ("C-e"   . (move-end-of-line end-of-buffer key-combo-return))
-    ))
+    ("C-e"   . (move-end-of-line end-of-buffer key-combo-return))))
 
 (defvar key-combo-lisp-default
   '(("."  . (key-combo-execute-original))
@@ -323,8 +318,7 @@ which in most cases is shared with all other buffers in the same major mode.
   "define-key-combo-load is deprecated"
   `(defun ,(intern (concat "key-combo-load-" name "-default")) ()
      (dolist (key ,(intern (concat "key-combo-" name "-default")))
-       (key-combo-define-local (key-combo-read-kbd-macro (car key)) (cdr key)))
-     ))
+       (key-combo-define-local (key-combo-read-kbd-macro (car key)) (cdr key)))))
 
 ;; for algol like language
 (defcustom key-combo-common-mode-hooks
@@ -334,8 +328,7 @@ which in most cases is shared with all other buffers in the same major mode.
     cperl-mode-hook
     javascript-mode-hook
     js-mode-hook
-    js2-mode-hook
-    )
+    js2-mode-hook)
   "Hooks that enable `key-combo-common-default' setting"
   :group 'key-combo)
 
@@ -399,8 +392,7 @@ which in most cases is shared with all other buffers in the same major mode.
     ("/* RET" . "/*\n`!!'\n*/");; add *? m-j
     ;; ("/* RET" . "/*\n*`!!'\n*/");; ToDo:change style by valiable
     ("{" . (key-combo-execute-original))
-    ("{ RET" . "{\n`!!'\n}")
-    )
+    ("{ RET" . "{\n`!!'\n}"))
   "Default binding which enabled by `key-combo-common-mode-hooks'"
   :group 'key-combo)
 
@@ -410,8 +402,7 @@ which in most cases is shared with all other buffers in the same major mode.
               key-combo-return));;back-to-indentation
     ("C-e" . (org-end-of-line
               end-of-buffer
-              key-combo-return))
-    )
+              key-combo-return)))
   "Default binding which enabled by `org-mode-hook'"
   :group 'key-combo)
 
@@ -426,10 +417,8 @@ which in most cases is shared with all other buffers in the same major mode.
 (defmacro key-combo-define-hook (hooks name keys)
   `(progn
      (defun ,(nth 1 name) ()
-       (key-combo-load-default-1 (current-local-map) ,keys)
-       )
-     (key-combo-load-by-hooks ,hooks ,name)
-     ))
+       (key-combo-load-default-1 (current-local-map) ,keys))
+     (key-combo-load-by-hooks ,hooks ,name)))
 
 ;;;###autoload
 (defun key-combo-load-default ()
@@ -468,8 +457,7 @@ which in most cases is shared with all other buffers in the same major mode.
 (defun key-combo-load-by-hooks (hooks func)
   (let ((hooks (if (consp hooks) hooks (list hooks))))
     (dolist (hook hooks)
-      (add-hook hook func t))
-    ))
+      (add-hook hook func t))))
 
 (defun key-combo-load-default-1 (map keys)
   (dolist (key keys)
@@ -487,8 +475,7 @@ which in most cases is shared with all other buffers in the same major mode.
       (progn
         (goto-char (car key-combo-start-position))
         ;; (set-window-start (selected-window) (cdr key-combo-start-position))
-        )))
-  )
+        ))))
 
 ;;(browse-url "http://q.hatena.ne.jp/1226571494")
 (defun key-combo-count-boundary (last-undo-list)
@@ -498,8 +485,7 @@ which in most cases is shared with all other buffers in the same major mode.
   "returns buffer undo list"
   ;; (message "count:%d" (1+ (key-combo-count-boundary buffer-undo-list)))
   (primitive-undo (1+ (key-combo-count-boundary buffer-undo-list))
-                  buffer-undo-list)
-  )
+                  buffer-undo-list))
 
 (defun key-combo-command-execute (command)
   "returns buffer undo list"
@@ -510,10 +496,8 @@ which in most cases is shared with all other buffers in the same major mode.
     (call-interactively command))
    ((functionp command)
     (funcall command))
-   (t (error "%s is not command" command))
-   )
-  (undo-boundary)
-  )
+   (t (error "%s is not command" command)))
+  (undo-boundary))
 
 (defvar key-combo-command-keys nil)
 (defvar key-combo-need-undop t)
@@ -524,11 +508,9 @@ which in most cases is shared with all other buffers in the same major mode.
   (let ((command (key-combo-key-binding key-combo-command-keys)))
     (if (and key-combo-need-undop
              (not (eq buffer-undo-list t)))
-        (key-combo-undo)
-      )
+        (key-combo-undo))
     (key-combo-command-execute command)
-    (setq key-combo-need-undop t)
-    ))
+    (setq key-combo-need-undop t)))
 
 (defvar key-combo-original-undo-list nil)
 
@@ -537,8 +519,7 @@ which in most cases is shared with all other buffers in the same major mode.
       (setq buffer-undo-list
             (append buffer-undo-list key-combo-original-undo-list)))
   (setq key-combo-original-undo-list nil)
-  (setq key-combo-command-keys nil)
-  )
+  (setq key-combo-command-keys nil))
 
 ;;;###autoload
 (define-minor-mode key-combo-mode
@@ -551,8 +532,7 @@ which in most cases is shared with all other buffers in the same major mode.
                 ;;post-self-insert-hook
                 #'key-combo-pre-command-function nil t)
     (remove-hook 'pre-command-hook
-                 #'key-combo-pre-command-function t))
-  )
+                 #'key-combo-pre-command-function t)))
 
 (defcustom key-combo-disable-modes nil
   "Major modes `key-combo-mode' can not run on."
@@ -632,8 +612,7 @@ which in most cases is shared with all other buffers in the same major mode.
           (t
            (if (eq last-command 'key-combo)
                (key-combo-finalize)
-             ))
-          )))
+             )))))
 
 (eval-after-load "eldoc"
   '(eldoc-add-command "key-combo"))

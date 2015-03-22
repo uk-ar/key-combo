@@ -1,61 +1,91 @@
-key-combo.el
-========
-
 [![Build Status](https://secure.travis-ci.org/uk-ar/key-combo.png)](http://travis-ci.org/uk-ar/key-combo)
 
-;;
-;; (require 'key-combo)
-;; (key-combo-mode 1)
-;;
-;; and some chords, for example
-;;
-;; (key-combo-define-global (kbd "=") '(" = " " == " " === " ))
+# key-combo.el
 
-;; (key-combo-define-global (kbd "=>") " => ")
-;;
-;; or load default settings
-;;
-;; (key-combo-load-default)
+*key-combo* is an Emacs package that provides "cycling" key-binding. Multiple
+commands are executed sequentially with a repeated keypress of a single
+key. Besides single key, a whole cords of keys could be bound to a command in
+order to create complex "smart operators".
 
-;; Integrating multiple commands into one command is sometimes
-;; useful. Pressing C-e at the end of line is useless and adding the
-;; other behavior in this situation is safe.
-;; 
-;; For example, defining `my-end': if point is at the end of line, go
-;; to the end of buffer, otherwise go to the end of line. Just evaluate it!
-;;
-;; (define-sequential-command my-end  end-of-line end-of-buffer)
-;; (global-set-key "\C-e" 'my-end)
-;;
-;; Consequently, pressing C-e C-e is `end-of-buffer'!
-;;
-;; `define-sequential-command' is a macro that defines a command whose
-;; behavior is changed by sequence of calls of the same command.
-;;
-;; `seq-return' is a command to return to the position when sequence
-;; of calls of the same command was started.
 
-*key-combo* is a Emacs plugin to support input several candidates with a single 
-key, like ess-smart-underscore in Emacs Speaks Statistics -- when user types 
-"_" key, it inserts " <- " for the first time or it replaces " <- " by "_" for 
-the second time.  This plugin provides functions to support to define such 
-key bindings easily.  For example: 
+## Instalation
 
-- <kbd>=</kbd>:insert ` = `
-- <kbd>==</kbd>:insert ` == `
-- <kbd>===</kbd>:insert ` === `
-- <kbd>====</kbd>:insert ` = `
 
-- <kbd>=</kbd>:insert ` = `
-- <kbd>=></kbd>:insert ` => `
+This package is available from [MELPA](http://melpa.org/#/). Alternatively you
+can place `key-combo.el` into your emacs path and add `(require 'key-combo)` to
+your init file.
 
-- <kbd>C-a</kbd>:move-beginning-of-line
-- <kbd>C-a C-a</kbd>:beginning-of-buffer
-- <kbd>C-a C-a C-a</kbd>:return
 
-1st key|2nd key|3rd key|command
-------|------|----|---
-=   |||   ` = `
-=|=|| ` == `
-=|=|=| ` === `
-=|>|| ` => `
+## Activation
+
+
+Activate `key-combo-mode` localy in a mode hook with:
+
+```lisp
+(key-combo-mode 1)
+```
+
+or globally with
+
+```lisp
+(global-key-combo-mode t)
+```
+
+## Configuration
+
+Define cycling key combos globally with `key-combo-define-global` function:
+
+```lisp
+(key-combo-define-global "=" '(" = " " == " " === " )) ;cycling
+(key-combo-define-global "=>" " => ")
+(key-combo-define-global "C-a" `(back-to-indentation move-beginning-of-line
+                                 beginning-of-buffer key-combo-return))
+(key-combo-define-global "C-e" '(move-end-of-line end-of-buffer key-combo-return))
+```
+
+or for each modes separately:
+
+```lisp
+(key-combo-define emacs-lisp-mode-map "="  '("= " "eq " "equal "))
+```
+
+There is also `key-combo-define-local` that should be used inside mode hooks.
+
+
+To facilitate quick declaration of cord, `key-combo.el` provides
+`key-combo-define-hook` which is used to setup same hook for a list of
+modes. Here is a simple example for `emacs-lisp`:
+
+```lisp
+
+(defvar my-lisp-mode-hooks
+  '(lisp-mode-hook
+    emacs-lisp-mode-hook
+    lisp-interaction-mode-hook
+    inferior-gauche-mode-hook
+    scheme-mode-hook))
+
+(defvar my-key-combos-for-lisp
+  '(("."  . ("." " . "))
+    (","  . (key-combo-execute-original))
+    (",@" . " ,@")
+    (";=" . ";=> ")
+    ("="  . ("= " "eq " "equal "))
+    (">=" . ">= ")))
+
+(key-combo-define-hook my-lisp-mode-hooks ; hooks
+                       'my-key-combo-lisp-hook ; function name
+                       my-key-combos-for-lisp)
+
+```
+
+## Default Configuration
+
+To load a range of default configurations for `lisp`, `C`, `C++`, `js`, `org`
+etc modes, use:
+
+```lisp
+(key-combo-load-default)
+````
+
+See the code for details.
