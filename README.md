@@ -4,9 +4,8 @@
 
 *key-combo* is an Emacs package that provides "cycling" key-binding. Multiple
 commands are executed sequentially with a repeated keypress of a single
-key. Besides single key, a whole cords of keys could be bound to a command in
-order to create complex "smart operators".
-
+key. Multi-key cords can also be bound to a sequences of characters or commands
+in order to create complex "smart operator" effects.
 
 ## Instalation
 
@@ -17,7 +16,6 @@ your init file.
 
 
 ## Activation
-
 
 Activate `key-combo-mode` localy in a mode hook with:
 
@@ -86,9 +84,6 @@ etc modes, use:
 
 ```lisp
 (key-combo-load-default)
-````
-
-See the code for details.
 
 ```
 
@@ -102,3 +97,5 @@ See the code for details.
 
 Anything you can do with the above package you should be able to do with
 `key-combo`, and much more.
+
+
