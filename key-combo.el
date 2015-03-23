@@ -554,68 +554,66 @@ which in most cases is shared with all other buffers in the same major mode."
   ;; :init-value t bug?
   :group 'key-combo)
 
+(defvar multiple-cursors-mode nil)
+
 (defun key-combo-pre-command-function ()
-  (let ((command-key-vector (this-command-keys-vector))
-        (first-timep (not (eq last-command 'key-combo))))
-    (setq key-combo-command-keys
-          ;; use last-command-event becase of testability
-          (vconcat key-combo-command-keys command-key-vector))
-    (unless (key-combo-key-binding key-combo-command-keys);;retry
-      ;; need undo?
-      (if (and (not (eq 2 (length key-combo-command-keys)))
-               (equal [] (delete (aref key-combo-command-keys 0)
-                                 key-combo-command-keys)))
-          (setq key-combo-need-undop t)
-        (setq key-combo-need-undop nil)
-        ;; (setq first-timep t)
-        )
-      (setq key-combo-command-keys command-key-vector))
-    (cond ((and
-            key-combo-mode
-            (not (minibufferp))
-            (not isearch-mode)
-            (key-combo-key-binding key-combo-command-keys)
-            (not (and (key-combo-comment-or-stringp)
-                      (memq (key-binding command-key-vector)
-                            '(self-insert-command skk-insert))))
-            )
-           (setq this-command 'key-combo)
-           (cond (first-timep
-                  ;; for test
-                  ;; (setq key-combo-command-keys nil)
-                  ;; (key-combo-finalize)
-                  ;; first time
-                  (setq key-combo-original-undo-list buffer-undo-list
-                        buffer-undo-list nil)
-                  (key-combo-set-start-position (cons (point) (window-start)))
-                  (cond ((memq (key-binding command-key-vector)
-                               '(self-insert-command skk-insert))
-                         (undo-boundary)
-                         (key-combo-command-execute
-                          (key-binding
-                           command-key-vector))
-                         (setq key-combo-need-undop t)
-                         ;; )
-                         ));;;
-                  )
-                 ;; continue
-                 ((eq key-combo-need-undop nil)
-                  ;; finalize
-                  (if (not (eq buffer-undo-list t))
-                      (setq key-combo-original-undo-list
-                            (append buffer-undo-list
-                                    key-combo-original-undo-list)))
-                  (setq buffer-undo-list nil)
-                  ;; (setq key-combo-command-keys nil)
-                  )
-                 ))
-          (t
-           (if (eq last-command 'key-combo)
-               (key-combo-finalize)
-             )))))
+  (when (and key-combo-mode
+	     (not multiple-cursors-mode))
+   (let ((command-key-vector (this-command-keys-vector))
+	 (first-timep (not (eq last-command 'key-combo))))
+     (setq key-combo-command-keys
+	   ;; use last-command-event becase of testability
+	   (vconcat key-combo-command-keys command-key-vector))
+     (unless (key-combo-key-binding key-combo-command-keys);;retry
+       ;; need undo?
+       (if (and (not (eq 2 (length key-combo-command-keys)))
+		(equal [] (delete (aref key-combo-command-keys 0)
+				  key-combo-command-keys)))
+	   (setq key-combo-need-undop t)
+	 ;; (setq first-timep t)
+	 (setq key-combo-need-undop nil))
+       (setq key-combo-command-keys command-key-vector))
+     (cond ((and (not (minibufferp))
+		 (not isearch-mode)
+		 (key-combo-key-binding key-combo-command-keys)
+		 (not (and (key-combo-comment-or-stringp)
+			   (memq (key-binding command-key-vector)
+				 '(self-insert-command skk-insert)))))
+	    (setq this-command 'key-combo)
+	    (cond (first-timep
+		   ;; for test
+		   ;; (setq key-combo-command-keys nil)
+		   ;; (key-combo-finalize)
+		   ;; first time
+		   (setq key-combo-original-undo-list buffer-undo-list
+			 buffer-undo-list nil)
+		   (key-combo-set-start-position (cons (point) (window-start)))
+		   (cond ((memq (key-binding command-key-vector)
+				'(self-insert-command skk-insert))
+			  (undo-boundary)
+			  (key-combo-command-execute
+			   (key-binding
+			    command-key-vector))
+			  (setq key-combo-need-undop t))))
+		  ;; continue
+		  ((eq key-combo-need-undop nil)
+		   ;; finalize
+		   (unless (eq buffer-undo-list t)
+		     (setq key-combo-original-undo-list
+			   (append buffer-undo-list
+				   key-combo-original-undo-list)))
+		   ;; (setq key-combo-command-keys nil)
+		   (setq buffer-undo-list nil))))
+	   (t
+	    (if (eq last-command 'key-combo)
+		(key-combo-finalize)))))))
 
 (eval-after-load "eldoc"
   '(eldoc-add-command "key-combo"))
+
+(eval-after-load "company"
+  '(add-to-list 'company-begin-commands 'key-combo))
+
 
 ;; (listify-key-sequence
 ;;  (kbd "M-C-d M-C-d"))
