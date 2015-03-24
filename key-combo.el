@@ -24,9 +24,10 @@
 ;;-------------------------------------------------------------------
 ;; 
 ;; Author: Yuuki Arisawa <yuuki.ari@gmail.com>
+;; Maintainer: Vitalie Spinu <spinuvit@gmail.com>
 ;; URL: https://github.com/uk-ar/key-combo
 ;; Created: 30 November 2011
-;; Version: 1.5.1
+;; Version: 1.5.9
 ;; Keywords: keyboard input
 
 ;;; Commentary:
@@ -52,6 +53,15 @@
 ;;  (key-combo-load-default)
 
 ;;; History:
+;;
+;; Revision 1.6 2015/03/24 15:24:37
+;; * eldoc and company-mode work correctly with key-combo commands
+;; * Partial fix for multiple-cursors
+;; * Several IME fixes and improvements
+;; * Support vector format in definition of key-combos
+;; * Add global-key-combo-mode-map to support global keys
+;; * Enable the use of SPC key
+;; * Add key-combo-disable-modes to disable in some modes
 ;; 
 ;; Revision 1.5.1 2012/06/06 21:36:28
 ;; * Bug fix which use flex-autopair by mistake.
