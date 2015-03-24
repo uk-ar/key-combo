@@ -92,6 +92,7 @@ etc modes, use:
 `key-combo` is intended as a superset of the following projects:
 
 - [smartchr.el](https://github.com/imakado/emacs-smartchr)
+- [sequential-command](http://emacswiki.org/emacs/sequential-command.el)
 - [key-cord.el](http://emacswiki.org/emacs/key-chord.el)
 - [electric-spacing.el](https://github.com/xwl/electric-spacing) (old [smart-operator.el](http://www.emacswiki.org/emacs/SmartOperator))
 
