@@ -1,9 +1,0 @@
-[submodule "lib/ert"]
-	path = lib/ert
-	url = https://github.com/ohler/ert.git
-[submodule "lib/el-spec"]
-	path = lib/el-spec
-	url = https://github.com/uk-ar/el-spec.git
-[submodule "lib/el-spy"]
-	path = lib/el-spy
-	url = https://github.com/uk-ar/el-spy
