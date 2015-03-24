@@ -515,9 +515,10 @@ which in most cases is shared with all other buffers in the same major mode."
 (defvar key-combo-original-undo-list nil)
 
 (defun key-combo-finalize ()
-  (if (not (eq buffer-undo-list t))
-      (setq buffer-undo-list
-            (append buffer-undo-list key-combo-original-undo-list)))
+  (when (and (not (eq buffer-undo-list t))
+	     key-combo-original-undo-list)
+    (setq buffer-undo-list
+	  (append buffer-undo-list key-combo-original-undo-list)))
   (setq key-combo-original-undo-list nil)
   (setq key-combo-command-keys nil))
 
