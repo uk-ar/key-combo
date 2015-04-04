@@ -93,7 +93,7 @@ etc modes, use:
 
 - [smartchr.el](https://github.com/imakado/emacs-smartchr)
 - [sequential-command](http://emacswiki.org/emacs/sequential-command.el)
-- [key-cord.el](http://emacswiki.org/emacs/key-chord.el)
+- [key-chord.el](http://emacswiki.org/emacs/key-chord.el)
 - [electric-spacing.el](https://github.com/xwl/electric-spacing) (old [smart-operator.el](http://www.emacswiki.org/emacs/SmartOperator))
 
 Anything you can do with the above package you should be able to do with
