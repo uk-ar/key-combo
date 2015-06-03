@@ -1,5 +1,21 @@
 (require 'key-combo)
 
+
+;; (defcustom key-combo-loop 'only
+;;   "Loop mode setting.
+;;  'allways: always loop
+;;  'only: loop on same key sequence onlyl
+;;  'never: don't loop")
+
+;; (defvar key-combo-debug nil)
+
+(defvar key-combo-lisp-mode-hooks
+  '(lisp-mode-hook
+    emacs-lisp-mode-hook
+    lisp-interaction-mode-hook
+    inferior-gauche-mode-hook
+    scheme-mode-hook))
+
 ;; < { [ should use flex-autopair
 (defvar key-combo-global-default
   '(;; instead of using (goto-char (point-min))
@@ -126,7 +142,7 @@
 (defun key-combo-load-default ()
   (interactive)
   (global-key-combo-mode t)
-  (key-combo-load-default-1 (current-global-map)
+  (key-combo-define-kalist (current-global-map)
                             key-combo-global-default)
   (key-combo-define-hook key-combo-common-mode-hooks
                          'key-combo-common-load-default
@@ -152,3 +168,5 @@
                            js2-mode-hook)
                          'key-combo-property-default
                          '((":"  . ": "))))
+
+(provide 'key-combo-config)
