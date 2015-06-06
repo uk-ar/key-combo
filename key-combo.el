@@ -1,4 +1,4 @@
-;;; key-combo.el --- map key sequence to commands
+;;; key-combo.el --- map key sequence to commands -*- lexical-binding: t -*-
 ;; 
 ;;-------------------------------------------------------------------
 ;;
@@ -27,7 +27,7 @@
 ;; Maintainer: Vitalie Spinu <spinuvit@gmail.com>
 ;; URL: https://github.com/uk-ar/key-combo
 ;; Created: 30 November 2011
-;; Version: 1.6
+;; Version: 2.0
 ;; Keywords: keyboard input
 
 ;;; Commentary:
@@ -133,46 +133,46 @@ The binding is probably a symbol with a function definition."
       ;;for unset key
       (null element)))
 
+
 (defun key-combo-pre-command-function ()
-  ;; (dbg "start")
+  ;;(dbg kc-command-keys)
   (when (and key-combo-mode
 	     (not (minibufferp))
 	     (not isearch-mode)
  	     (not multiple-cursors-mode))
     (let ((cmd-keys (this-command-keys-vector))
 	  (firstp (not (eq last-command 'key-combo))))
-
       (setq kc-command-keys
 	    ;; use last-command-event becase of testability
 	    (vconcat kc-command-keys cmd-keys))
-      (unless (key-combo-key-binding kc-command-keys);;retry
-	;; (dbg "here1")
+      (unless (key-combo-key-binding kc-command-keys);;cycle
+	;;(dbg "here1")
 	;; need undo?
 	(setq kc-need-undo
 	      (and (not (eq 2 (length kc-command-keys)))
 		   (equal [] (delete (aref kc-command-keys 0)
 				     kc-command-keys))))
 	(setq kc-command-keys cmd-keys))
-      ;; (dbg kc-command-keys)
-      ;; (dbg kc-need-undo)
+      ;;(dbg kc-command-keys)
+      ;;(dbg kc-need-undo)
       (cond ((and (key-combo-key-binding kc-command-keys)
 		  (not (and (kc-in-string-or-comment-p)
 			    (memq (key-binding cmd-keys)
 				  '(self-insert-command skk-insert)))))
 	     (setq this-command 'key-combo)
-	     ;; (dbg (key-combo-key-binding kc-command-keys))
+	     ;;(dbg (key-combo-key-binding kc-command-keys))
 	     (cond (firstp
 		    (setq key-combo-original-undo-list buffer-undo-list
 			  buffer-undo-list nil)
 		    (key-combo-set-start-position (cons (point) (window-start)))
 		    (when (memq (key-binding cmd-keys)  '(self-insert-command skk-insert))
-		      ;; (dbg "undo-boundary")
+		      ;;(dbg "undo-boundary")
 		      (undo-boundary)
-		      (key-combo-command-execute
-		       (key-binding cmd-keys))
+		      (key-combo-execute (key-binding cmd-keys))
 		      (setq kc-need-undo t)))
 		   ;; continue
 		   ((eq kc-need-undo nil)
+		    ;;(dbg "need-undo nil")
 		    ;; finalize
 		    (unless (eq buffer-undo-list t)
 		      (setq key-combo-original-undo-list
@@ -180,13 +180,14 @@ The binding is probably a symbol with a function definition."
 				    key-combo-original-undo-list)))
 		    (setq buffer-undo-list nil))))
 	    (t
-	     (if (eq last-command 'key-combo)
-		 (key-combo-finalize)))))))
+	     (when (eq last-command 'key-combo)
+	       ;;(dbg "finalize")
+	       (key-combo-finalize)))))))
 
 ;; fixme: are these declaration really needed? 
 (declare-function key-combo-set-start-position "key-combo")
 (declare-function key-combo-return "key-combo")
-
+ 
 ;;(declare-function key-combo-return "")
 (lexical-let ((key-combo-start-position nil))
   (defun key-combo-set-start-position (pos)
@@ -199,12 +200,142 @@ The binding is probably a symbol with a function definition."
         ;; (set-window-start (selected-window) (cdr key-combo-start-position))
         (goto-char (car key-combo-start-position))))))
 
+(defun kc-group-keydef (keydef)
+  "Group KEYDEF elements into alist of :keywrods, :lists, :vectors and :cycle."
+  (let (kval)
+    (--group-by (cond ((keywordp it) (setq kval :opts))
+		      (kval (setq kval nil) :opts)
+		      ((vectorp it) :interleave)
+		      ((listp it) :forward)
+		      (t :cycle))
+		keydef)))
+
+;; (-let [(&alist :cycle kcycle
+;; 	       :forward kforward
+;; 	       :interleave kinterleave
+;; 	       :opts kopts)
+;;        (kc-group-keydef '("sdff" :a 1 :b 2 "sfa"
+;; 			  ("=" "===")
+;; 			  :c 3 lalala
+;; 			  ("+" "%%%%")
+;; 			  [("=" " = ") ("+" " + ")]
+;; 			  343))]
+;;   kcycle)
+
+
+(defvar kc-last-undo-length nil)
+(defvar kc-last-undo-was-t nil)
+
+(defun kc-undo-boundary ()
+  (setq kc-last-undo-was-t (eq buffer-undo-list t))
+  (when kc-last-undo-was-t
+    (setq buffer-undo-list nil))
+  (undo-boundary)
+  (setq kc-last-undo-length (length buffer-undo-list)))
+
+(defun kc-undo-last-command ()
+  (while (> (length buffer-undo-list) kc-last-undo-length)
+    (let ((n (length (--take-while it buffer-undo-list))))
+      (setq buffer-undo-list (primitive-undo 1 buffer-undo-list))))
+  (when kc-last-undo-was-t
+    (setq buffer-undo-list t)))
+
+(defun kc--command-name (mode-prefix key-prefix &optional sep key)
+  (let ((prefix (or (and mode-prefix
+			 (symbolp mode-prefix)
+			 (symbol-name mode-prefix))
+		    mode-prefix
+		    (symbol-name major-mode))))
+    (interna
+     (concat "kc:"
+	     (->> prefix
+		  (replace-regexp-in-string "-mode\\(-map\\)?$" ""))
+	     ":"
+	     (->> key-prefix
+		  (key-description)
+		  (replace-regexp-in-string " +" ""))
+	     (or sep "")
+	     (if key
+		 (->> key
+		      (key-description)
+		      (replace-regexp-in-string " +" ""))
+	       "")))))
+
+(defvar key-combo-cycle nil)
+
+(defun kc-opt (name plist)
+  (let ((global (intern (concat "key-combo-" name)))
+	(kwd (intern (concat ":" name))))
+    (if (plist-member plist kwd)
+	 (plist-get plist kwd)
+      (symbol-value global))))
+
+(defun kc--make-command-internal (key command-name kcycle kforward kinterleave kopts)
+  (let ((kcycle-remain (or kcycle '(key-combo-execute-original))))
+    (fset command-name
+	  (lambda ()
+	    (interactive)
+	    (let ((repeat (and (eq command-name real-last-command)
+			       (> (length kcycle) 1)
+			       (or kcycle-remain
+				   (kc-opt "cycle" kopts)))))
+	      (unless kcycle-remain
+		(setq kcycle-remain kcycle))
+	      (if repeat
+		  (kc-undo-last-command)
+		(setq kcycle-remain kcycle))
+	      (kc-undo-boundary)
+	      (let ((cmd (pop kcycle-remain)))
+		(key-combo-execute cmd)
+		(let ((tmap (make-sparse-keymap)))
+		  (define-key tmap key command-name)
+		  (--each kforward
+		    (define-key tmap (car it) (cdr it)))
+		  (set-transient-map tmap))))))))
+
+(defun kc--make-forward-commands (kforward mode-prefix key-prefix sep)
+  (--map (cons (vconcat (car it))
+	       (kc-make-command (car it) (cdr it) mode-prefix key-prefix sep))
+	 kforward))
+
+(defun kc--make-interleave-commands (kinterleave mode-prefix key-prefix sep)
+  (let* ((sep (concat "[" (-map #'car kinterleave) "]"))
+	 (interleave-with
+	  (--map (cons (car it)
+		       (kc--command-name mode-prefix key-prefix sep (car it)))
+		 kinterleave)))
+    (--map (cons (vconcat (car it))
+		 (kc-make-command (car it) (cdr it) mode-prefix key-prefix sep))
+	   kinterleave)))
+
+(defun kc-make-command (key keydef &optional mode-prefix key-prefix sep interleave-with)
+  (-let* ((command-name (kc--command-name mode-prefix key-prefix sep key))
+	  (last-key (vector (-last-item (listify-key-sequence key))))
+	  (key (vconcat key))
+	  ((&alist :cycle kcycle
+		   :forward kforward
+		   :interleave kinterleave
+		   :opts kopts)
+	   (kc-group-keydef keydef))
+	  (kforward (kc--make-forward-commands kforward mode-prefix key-prefix sep)))
+    (kc--make-command-internal key command-name
+			       kcycle kforward kinterleave
+			       kopts interleave-with)
+    command-name))
+
+;; (local-set-key "=" (kc-make-command  "=" '("=1" "=2" "=3"
+;; 					   :cycle t
+;; 					   ("-" " -- " " --- ")
+;; 					   ("+" " ++ " :cycle t))))
+
+;; (defun abbb-\[sfd\] 343)
+
 
 ;;; EXECUTIONS
 
 (defun key-combo-execute-original ()
   (interactive)
-  (call-interactively (key-binding (this-command-keys-vector))))
+  (call-interactively (key-binding (this-keys-vector))))
 
 (defun key-combo-execute-macro (string)
   (cond
@@ -233,7 +364,7 @@ The binding is probably a symbol with a function definition."
     (if (and kc-need-undo
              (not (eq buffer-undo-list t)))
         (key-combo-undo))
-    (key-combo-command-execute command)
+    (key-combo-execute command)
     (setq kc-need-undo t)))
 
 (defun key-combo-finalize ()
@@ -244,7 +375,7 @@ The binding is probably a symbol with a function definition."
   (setq key-combo-original-undo-list nil)
   (setq kc-command-keys nil))
 
-(defun key-combo-command-execute (command)
+(defun key-combo-execute (command)
   "returns buffer undo list"
   (cond
    ((stringp command)
@@ -253,7 +384,7 @@ The binding is probably a symbol with a function definition."
     (call-interactively command))
    ((functionp command)
     (funcall command))
-   (t (error "%s is not command" command)))
+   (t (error "%s is not a key-combo command" command)))
   (undo-boundary))
 
 
