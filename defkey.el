@@ -1,4 +1,9 @@
+(require 'dash)
 
+;; FLOW OPTIONS
+(defvar defkey-flow-cycle nil)
+
+;; UTILITIES
 (defun defkey-group-keydef (keydef)
   "Group KEYDEF elements into alist of :keywrods, :lists, :vectors and :cycle."
   (let (kval)
@@ -40,15 +45,15 @@
   (when defkey-last-undo-was-t
     (setq buffer-undo-list t)))
 
-(defun defkey--command-name (prefix key)
+(defun defkey-command-name (prefix key)
   (let* ((prefix (or (and prefix
 			  (symbolp prefix)
 			  (symbol-name prefix))
 		     prefix
 		     (symbol-name major-mode)))
-	 (first (not (string-match-p "^kc:" prefix))))
+	 (first (not (string-match-p "^dk:" prefix))))
     (intern
-     (concat (and first "kc:")
+     (concat (and first "dk:")
 	     (->> prefix
 		  (replace-regexp-in-string "-mode\\(-map\\)?$" ""))
 	     (and first ":")
@@ -56,16 +61,31 @@
 		  (key-description)
 		  (replace-regexp-in-string " +" ""))))))
 
-(defvar key-combo-cycle nil)
-
 (defun defkey-opt (name plist)
-  (let ((global (intern (concat "key-combo-" name)))
+  (let ((global (intern (concat "defkey-flow-" name)))
 	(kwd (intern (concat ":" name))))
     (if (plist-member plist kwd)
 	 (plist-get plist kwd)
       (symbol-value global))))
 
-(defun defkey--make-command-internal (command-name key kcycle kforward kinterleave kopts interleave-with)
+
+
+;;; CORE
+(defun defkey--make-forward-commands (kforward prefix)
+  (--map (cons (vconcat (car it))
+	       (defkey-make-command (car it) (cdr it) prefix))
+	 kforward))
+
+(defun defkey--make-interleave-commands (kinterleave-1 prefix)
+  (let ((interleave-with
+	 (--map (cons (car it)
+		      (defkey-command-name prefix (car it)))
+		kinterleave-1)))
+    (--map (cons (vconcat (car it))
+		 (defkey-make-command (car it) (cdr it) prefix interleave-with))
+	   kinterleave-1)))
+
+(defun defkey--make-command (command-name key kcycle kforward kinterleave kopts interleave-with)
   (let ((kcycle-remain (or kcycle '(key-combo-execute-original))))
     (fset command-name
 	  (lambda ()
@@ -94,22 +114,8 @@
 		      (define-key tmap (car it) (cdr it))))
 		  (set-transient-map tmap))))))))
 
-(defun defkey--make-forward-commands (kforward prefix)
-  (--map (cons (vconcat (car it))
-	       (defkey-make-command (car it) (cdr it) prefix))
-	 kforward))
-
-(defun defkey--make-interleave-commands (kinterleave-1 prefix)
-  (let ((interleave-with
-	 (--map (cons (car it)
-		      (defkey--command-name prefix (car it)))
-		kinterleave-1)))
-    (--map (cons (vconcat (car it))
-		 (defkey-make-command (car it) (cdr it) prefix interleave-with))
-	   kinterleave-1)))
-
 (defun defkey-make-command (key def &optional prefix interleave-with)
-  (-let* ((command-name (defkey--command-name prefix key))
+  (-let* ((command-name (defkey-command-name prefix key))
 	  (key (vconcat key))
 	  ((&alist :cycle kcycle
 		   :forward kforward
@@ -119,7 +125,7 @@
 	  (kinterleave (--map (defkey--make-interleave-commands it command-name)
 			      kinterleave))
 	  (kforward (defkey--make-forward-commands kforward command-name)))
-    (defkey--make-command-internal command-name key
+    (defkey--make-command command-name key
 			       kcycle kforward kinterleave
 			       kopts interleave-with)
     command-name))
