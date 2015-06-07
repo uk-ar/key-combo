@@ -1,5 +1,6 @@
 (require 'ert)
 (require 'key-combo)
+(require 'key-combo-config)
 
 
 
@@ -315,7 +316,8 @@
       (key-combo-define-local "a" nil)
       (buffer-enable-undo)
       (should (string= (kc-test-execute "+" bf) " + "))
-      (should (string= (kc-test-execute "++" bf) "++")))))
+      (should (string= (kc-test-execute "++" bf) "++"))
+      )))
 
 
 

@@ -124,6 +124,7 @@ The binding is probably a symbol with a function definition."
   (cond
    ((functionp command) command)
    ((stringp command) command)
+   ((null command) nil)
    ;; ((listp command) command)
    (t (error "%s is not a valid key combo command" command))))
 
