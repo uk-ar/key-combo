@@ -133,7 +133,6 @@ The binding is probably a symbol with a function definition."
       ;;for unset key
       (null element)))
 
-
 (defun key-combo-pre-command-function ()
   ;;(dbg kc-command-keys)
   (when (and key-combo-mode
@@ -200,142 +199,12 @@ The binding is probably a symbol with a function definition."
         ;; (set-window-start (selected-window) (cdr key-combo-start-position))
         (goto-char (car key-combo-start-position))))))
 
-(defun kc-group-keydef (keydef)
-  "Group KEYDEF elements into alist of :keywrods, :lists, :vectors and :cycle."
-  (let (kval)
-    (--group-by (cond ((keywordp it) (setq kval :opts))
-		      (kval (setq kval nil) :opts)
-		      ((vectorp it) :interleave)
-		      ((listp it) :forward)
-		      (t :cycle))
-		keydef)))
-
-;; (-let [(&alist :cycle kcycle
-;; 	       :forward kforward
-;; 	       :interleave kinterleave
-;; 	       :opts kopts)
-;;        (kc-group-keydef '("sdff" :a 1 :b 2 "sfa"
-;; 			  ("=" "===")
-;; 			  :c 3 lalala
-;; 			  ("+" "%%%%")
-;; 			  [("=" " = ") ("+" " + ")]
-;; 			  343))]
-;;   kcycle)
-
-
-(defvar kc-last-undo-length nil)
-(defvar kc-last-undo-was-t nil)
-
-(defun kc-undo-boundary ()
-  (setq kc-last-undo-was-t (eq buffer-undo-list t))
-  (when kc-last-undo-was-t
-    (setq buffer-undo-list nil))
-  (undo-boundary)
-  (setq kc-last-undo-length (length buffer-undo-list)))
-
-(defun kc-undo-last-command ()
-  (while (> (length buffer-undo-list) kc-last-undo-length)
-    (let ((n (length (--take-while it buffer-undo-list))))
-      (setq buffer-undo-list (primitive-undo 1 buffer-undo-list))))
-  (when kc-last-undo-was-t
-    (setq buffer-undo-list t)))
-
-(defun kc--command-name (mode-prefix key-prefix &optional sep key)
-  (let ((prefix (or (and mode-prefix
-			 (symbolp mode-prefix)
-			 (symbol-name mode-prefix))
-		    mode-prefix
-		    (symbol-name major-mode))))
-    (interna
-     (concat "kc:"
-	     (->> prefix
-		  (replace-regexp-in-string "-mode\\(-map\\)?$" ""))
-	     ":"
-	     (->> key-prefix
-		  (key-description)
-		  (replace-regexp-in-string " +" ""))
-	     (or sep "")
-	     (if key
-		 (->> key
-		      (key-description)
-		      (replace-regexp-in-string " +" ""))
-	       "")))))
-
-(defvar key-combo-cycle nil)
-
-(defun kc-opt (name plist)
-  (let ((global (intern (concat "key-combo-" name)))
-	(kwd (intern (concat ":" name))))
-    (if (plist-member plist kwd)
-	 (plist-get plist kwd)
-      (symbol-value global))))
-
-(defun kc--make-command-internal (key command-name kcycle kforward kinterleave kopts)
-  (let ((kcycle-remain (or kcycle '(key-combo-execute-original))))
-    (fset command-name
-	  (lambda ()
-	    (interactive)
-	    (let ((repeat (and (eq command-name real-last-command)
-			       (> (length kcycle) 1)
-			       (or kcycle-remain
-				   (kc-opt "cycle" kopts)))))
-	      (unless kcycle-remain
-		(setq kcycle-remain kcycle))
-	      (if repeat
-		  (kc-undo-last-command)
-		(setq kcycle-remain kcycle))
-	      (kc-undo-boundary)
-	      (let ((cmd (pop kcycle-remain)))
-		(key-combo-execute cmd)
-		(let ((tmap (make-sparse-keymap)))
-		  (define-key tmap key command-name)
-		  (--each kforward
-		    (define-key tmap (car it) (cdr it)))
-		  (set-transient-map tmap))))))))
-
-(defun kc--make-forward-commands (kforward mode-prefix key-prefix sep)
-  (--map (cons (vconcat (car it))
-	       (kc-make-command (car it) (cdr it) mode-prefix key-prefix sep))
-	 kforward))
-
-(defun kc--make-interleave-commands (kinterleave mode-prefix key-prefix sep)
-  (let* ((sep (concat "[" (-map #'car kinterleave) "]"))
-	 (interleave-with
-	  (--map (cons (car it)
-		       (kc--command-name mode-prefix key-prefix sep (car it)))
-		 kinterleave)))
-    (--map (cons (vconcat (car it))
-		 (kc-make-command (car it) (cdr it) mode-prefix key-prefix sep))
-	   kinterleave)))
-
-(defun kc-make-command (key keydef &optional mode-prefix key-prefix sep interleave-with)
-  (-let* ((command-name (kc--command-name mode-prefix key-prefix sep key))
-	  (last-key (vector (-last-item (listify-key-sequence key))))
-	  (key (vconcat key))
-	  ((&alist :cycle kcycle
-		   :forward kforward
-		   :interleave kinterleave
-		   :opts kopts)
-	   (kc-group-keydef keydef))
-	  (kforward (kc--make-forward-commands kforward mode-prefix key-prefix sep)))
-    (kc--make-command-internal key command-name
-			       kcycle kforward kinterleave
-			       kopts interleave-with)
-    command-name))
-
-;; (local-set-key "=" (kc-make-command  "=" '("=1" "=2" "=3"
-;; 					   :cycle t
-;; 					   ("-" " -- " " --- ")
-;; 					   ("+" " ++ " :cycle t))))
-
-;; (defun abbb-\[sfd\] 343)
-
 
 ;;; EXECUTIONS
 
 (defun key-combo-execute-original ()
   (interactive)
-  (call-interactively (key-binding (this-keys-vector))))
+  (call-interactively (key-binding (this-command-keys-vector))))
 
 (defun key-combo-execute-macro (string)
   (cond
