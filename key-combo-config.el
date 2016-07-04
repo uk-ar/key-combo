@@ -31,7 +31,7 @@
     ("SPC ." . " . ")
     (","  . (key-combo-execute-original))
     (",@" . " ,@");; for macro
-    (";"  . ";; ")
+    ;; (";"  . ";; ")
     ;; (";"  . (";; " ";;; " "; ")) ;cannot use because of comment
     (";=" . ";=> ")
     ("="  . ("= " "eq " "equal "))
@@ -73,7 +73,7 @@
     ("!~" . " !~ ")   ; for ruby
     ("~" . key-combo-execute-original)
     ;; for unary operator
-    ("::" . " :: ") ;; for haskell
+    ;; ("::" . " :: ") ;; for haskell
     ;; (":" . ":");;for ruby symbol
     ("&"  . (" & " " && "))             ;overwrite in c
     ("&=" . " &= ");; for c
