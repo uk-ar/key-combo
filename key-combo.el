@@ -105,6 +105,7 @@
 (defun key-combo-key-binding (key)
   "Return the binding for command KEY in current key-combo keymap.
 KEY is a sequence of keystrokes (a string or a vector)."
+  ;; (dbg key)
   (key-binding (kc-make-key-vector key)))
 
 (defun key-combo-lookup-key (keymap key)
@@ -135,54 +136,55 @@ The binding is probably a symbol with a function definition."
       (null element)))
 
 (defun key-combo-pre-command-function ()
-  ;;(dbg kc-command-keys)
+  ;; (dbg kc-command-keys)
   (when (and key-combo-mode
-	     (not (minibufferp))
-	     (not isearch-mode)
- 	     (not multiple-cursors-mode))
+             (not (minibufferp))
+             (not isearch-mode)
+             (not multiple-cursors-mode))
     (let ((cmd-keys (this-command-keys-vector))
-	  (firstp (not (eq last-command 'key-combo))))
+          (firstp (not (eq last-command 'key-combo))))
       (setq kc-command-keys
-	    ;; use last-command-event becase of testability
-	    (vconcat kc-command-keys cmd-keys))
-      (unless (key-combo-key-binding kc-command-keys);;cycle
-	;;(dbg "here1")
-	;; need undo?
-	(setq kc-need-undo
-	      (and (not (eq 2 (length kc-command-keys)))
-		   (equal [] (delete (aref kc-command-keys 0)
-				     kc-command-keys))))
-	(setq kc-command-keys cmd-keys))
+            ;; use last-command-event becase of testability
+            (vconcat kc-command-keys cmd-keys))
+      (unless (key-combo-key-binding kc-command-keys) ;;cycle
+        ;;(dbg "here1")
+        ;; need undo?
+        (setq kc-need-undo
+              (and (not (eq 2 (length kc-command-keys)))
+                   (equal [] (delete (aref kc-command-keys 0)
+                                     kc-command-keys))))
+        (setq kc-command-keys cmd-keys))
       ;;(dbg kc-command-keys)
       ;;(dbg kc-need-undo)
       (cond ((and (key-combo-key-binding kc-command-keys)
-		  (not (and (kc-in-string-or-comment-p)
-			    (memq (key-binding cmd-keys)
-				  '(self-insert-command skk-insert)))))
-	     (setq this-command 'key-combo)
-	     ;;(dbg (key-combo-key-binding kc-command-keys))
-	     (cond (firstp
-		    (setq key-combo-original-undo-list buffer-undo-list
-			  buffer-undo-list nil)
-		    (key-combo-set-start-position (cons (point) (window-start)))
-		    (when (memq (key-binding cmd-keys)  '(self-insert-command skk-insert))
-		      ;;(dbg "undo-boundary")
-		      (undo-boundary)
-		      (key-combo-execute (key-binding cmd-keys))
-		      (setq kc-need-undo t)))
-		   ;; continue
-		   ((eq kc-need-undo nil)
-		    ;;(dbg "need-undo nil")
-		    ;; finalize
-		    (unless (eq buffer-undo-list t)
-		      (setq key-combo-original-undo-list
-			    (append buffer-undo-list
-				    key-combo-original-undo-list)))
-		    (setq buffer-undo-list nil))))
-	    (t
-	     (when (eq last-command 'key-combo)
-	       ;;(dbg "finalize")
-	       (key-combo-finalize)))))))
+                  (or (eq last-command 'key-combo) ; previous command might have created a string
+                      (not (and (kc-in-string-or-comment-p)
+                                (memq (key-binding cmd-keys)
+                                      '(self-insert-command skk-insert))))))
+             (setq this-command 'key-combo)
+             (dbg (key-combo-key-binding kc-command-keys))
+             (cond (firstp
+                    (setq key-combo-original-undo-list buffer-undo-list
+                          buffer-undo-list nil)
+                    (key-combo-set-start-position (cons (point) (window-start)))
+                    (when (memq (key-binding cmd-keys)  '(self-insert-command skk-insert))
+                      ;;(dbg "undo-boundary")
+                      (undo-boundary)
+                      (key-combo-execute (key-binding cmd-keys))
+                      (setq kc-need-undo t)))
+                   ;; continue
+                   ((eq kc-need-undo nil)
+                    ;;(dbg "need-undo nil")
+                    ;; finalize
+                    (unless (eq buffer-undo-list t)
+                      (setq key-combo-original-undo-list
+                            (append buffer-undo-list
+                                    key-combo-original-undo-list)))
+                    (setq buffer-undo-list nil))))
+            (t
+             (when (eq last-command 'key-combo)
+               ;;(dbg "finalize")
+               (key-combo-finalize)))))))
 
 ;; fixme: are these declaration really needed? 
 (declare-function key-combo-set-start-position "key-combo")
