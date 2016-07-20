@@ -1,5 +1,8 @@
 [![Build Status](https://secure.travis-ci.org/uk-ar/key-combo.png)](http://travis-ci.org/uk-ar/key-combo)
 
+__Note:__ This project is not under active development and has a range of
+issues. You might be better using something else.
+
 # key-combo.el
 
 *key-combo* is an Emacs package that provides "cycling" key-binding. Multiple
