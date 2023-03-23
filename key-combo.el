@@ -122,7 +122,7 @@
 
 ;; Code
 
-(require 'cl)
+(require 'cl-lib)
 
 ;; for remove-if
 (defvar key-combo-debug nil)
@@ -172,7 +172,7 @@ The binding is probably a symbol with a function definition."
   (setq b (if (consp b) b (list b)))
   (apply
    'append
-   (delete-if
+   (cl-delete-if
     'null
     (mapcar
      (lambda (x) (if (memq x b) (list x) nil))
@@ -194,7 +194,7 @@ The binding is probably a symbol with a function definition."
 (defun key-combo-execute-macro (string)
   (cond
    ((string-match "`!!'" string)
-    (destructuring-bind (pre post) (split-string string "`!!'")
+    (cl-destructuring-bind (pre post) (split-string string "`!!'")
       (key-combo-execute-macro pre)
       (save-excursion
         (key-combo-execute-macro post))))
@@ -489,7 +489,7 @@ which in most cases is shared with all other buffers in the same major mode."
 
 ;;(browse-url "http://q.hatena.ne.jp/1226571494")
 (defun key-combo-count-boundary (last-undo-list)
-  (length (remove-if-not 'null last-undo-list)))
+  (length (cl-remove-if-not 'null last-undo-list)))
 
 (defun key-combo-undo ()
   "returns buffer undo list"
